@@ -1,12 +1,13 @@
 # drone-dispatch-h5（用户端 H5 / 微信小程序 · 正式版）
 
-> 本目录是**独立 Git 仓库**（仓库名即目录名 `drone-dispatch-h5`），提交记录与用户端相关，
-> 与顶层文档仓、`drone-dispatch-web`、`drone-dispatch-server` 互不混杂。
+> 本目录是四个平级独立 Git 仓库之一（仓库名即目录名 `drone-dispatch-h5`），提交记录与用户端相关，
+> 与 `drone-dispatch-prototype`、`drone-dispatch-web`、`drone-dispatch-server` 三仓互不混杂。
+> 四仓总览与 GitHub 地址见 [`drone-dispatch-prototype` 的 README](https://github.com/dnmsrc/drone-dispatch-prototype#项目全貌与仓库分布)。
 
 - 原型基线：`drone-dispatch-prototype/h5`（uni-app Vue3 + Vite，`dist/build/h5` 与 `dist/build/mp-weixin`）
 - 负责：微信授权登录、选参计价、档期日历、下单支付、退款申请、评价、售前咨询流程
 
-**当前状态：目录占位，尚未放入正式代码。** 原型 `drone-dispatch-prototype/h5` 已跑通完整 H5 演示链路并可编译微信小程序，本仓将以它为基线迁移。多仓结构与迁移方案见上级 `README.md`。
+**当前状态：目录占位，尚未放入正式代码。** 原型 `drone-dispatch-prototype/h5` 已跑通完整 H5 演示链路并可编译微信小程序，本仓将以它为基线迁移。多仓结构与迁移方案见 [`drone-dispatch-prototype` 的 README](https://github.com/dnmsrc/drone-dispatch-prototype#项目全貌与仓库分布)。
 
 ## 规划技术栈
 
