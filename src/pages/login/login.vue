@@ -31,7 +31,7 @@
       <!-- ② 微信内 + 模拟授权：没有公众号资质时用，演示「用户点允许 → 自动登录」的完整交互 -->
       <view v-else-if="inWechat" class="mock-card">
         <view class="auth-head">
-          <view class="auth-logo"><DroneLogo :size="56" :float="false" /></view>
+          <view class="auth-logo"><DroneLogo :size="86" :float="false" /></view>
           <text class="auth-title">{{ brandName }} 申请</text>
           <text class="auth-sub">获取你的昵称、头像</text>
         </view>
@@ -243,9 +243,9 @@ function goHome() {
   gap: 8rpx;
 }
 .auth-logo {
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 24rpx;
+  width: 108rpx;
+  height: 108rpx;
+  border-radius: 26rpx;
   background: #eef2ff;
   display: flex;
   align-items: center;
@@ -345,13 +345,14 @@ function goHome() {
 .btn-copy {
   margin-top: 36rpx;
   width: 100%;
-  background: #07c160;
+  background: linear-gradient(135deg, #4a6cf7 0%, #6c8bff 100%);
   color: #fff;
   font-size: var(--fs-6);
   font-weight: var(--fw-semibold);
   border-radius: 999rpx;
   padding: 20rpx 0;
   border: none;
+  box-shadow: 0 10rpx 24rpx rgba(74, 108, 247, 0.32);
 }
 .btn-copy::after {
   border: none;
