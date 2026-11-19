@@ -100,7 +100,8 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import NavBar from '@/components/NavBar.vue'
-import { store, newApply, restoreFromConsult, requireLogin, isLoggedIn } from '@/store'
+import { store, newApply, restoreFromConsult, isLoggedIn } from '@/store'
+import { beginLogin, requireLogin } from '@/services/auth'
 import { getSilent } from '@/utils/request'
 import { isActive, fmtStamp } from '@/mock/engines/consult.js'
 
@@ -177,9 +178,7 @@ function reapply() {
 }
 
 function goLogin() {
-  uni.navigateTo({
-    url: '/pages/login/login?redirect=' + encodeURIComponent('/pages/consult/index'),
-  })
+  beginLogin('/pages/consult/index')
 }
 
 // 空态的「去预约表演」直接进预约表单，不要绕回首页（原来 reLaunch 首页，用户还得再点一次）。

@@ -68,6 +68,7 @@ import StatusTag from '@/components/StatusTag.vue'
 import Empty from '@/components/Empty.vue'
 import { get, post } from '@/utils/request'
 import { isLoggedIn } from '@/store'
+import { beginLogin } from '@/services/auth'
 import { fmtTime, orderSummary } from '@/utils/format'
 
 interface OrderItem {
@@ -111,7 +112,8 @@ onLoad((q) => {
 
 onShow(() => {
   if (!isLoggedIn()) {
-    uni.navigateTo({ url: '/pages/login/login' })
+    // 未登录：微信内直接发起授权，微信外由登录页提示扫码；登录后回到当前 tab
+    beginLogin('/pages/order/list?tab=' + active.value)
     return
   }
   load()

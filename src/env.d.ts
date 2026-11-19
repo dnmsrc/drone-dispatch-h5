@@ -17,6 +17,14 @@ interface ImportMetaEnv {
   readonly VITE_DEV_PORT: string
   /** 静态 Mock 数据模拟的网络延迟（毫秒），调成 0 可即时返回 */
   readonly VITE_MOCK_DELAY: string
+  /** 微信登录模式：mock（本地模拟授权）| real（真实微信网页授权） */
+  readonly VITE_WX_AUTH_MODE: string
+  /** 服务号 AppID（公开标识，非密钥）；real 模式必填，留空自动降级 mock */
+  readonly VITE_WX_APP_ID: string
+  /** 授权作用域：snsapi_userinfo（可拿昵称头像）| snsapi_base（静默只拿 openid） */
+  readonly VITE_WX_SCOPE: string
+  /** 授权回调基址，需落在公众平台「网页授权域名」下；留空取当前站点根目录 */
+  readonly VITE_WX_REDIRECT_URI: string
 }
 
 interface ImportMeta {

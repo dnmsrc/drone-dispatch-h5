@@ -218,6 +218,7 @@ import NavBar from '@/components/NavBar.vue'
 import Calendar from '@/components/Calendar.vue'
 import { get } from '@/utils/request'
 import { store, isLoggedIn } from '@/store'
+import { beginLogin } from '@/services/auth'
 
 interface Tier {
   drones: number
@@ -472,7 +473,7 @@ function validate(): string {
 
 function submit(): void {
   if (!isLoggedIn()) {
-    uni.navigateTo({ url: '/pages/login/login' })
+    beginLogin('/pages/order/create')
     return
   }
   const err = validate()

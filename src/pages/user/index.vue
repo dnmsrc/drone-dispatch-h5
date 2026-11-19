@@ -74,7 +74,8 @@ import { onShow } from '@dcloudio/uni-app'
 import NightSky from '@/components/NightSky.vue'
 import TabBar from '@/components/TabBar.vue'
 import DroneLogo from '@/components/DroneLogo.vue'
-import { store, logout, isLoggedIn } from '@/store'
+import { store, isLoggedIn } from '@/store'
+import { beginLogin, logout } from '@/services/auth'
 import { getSilent } from '@/utils/request'
 import { avatar } from '@/mock/media'
 
@@ -139,23 +140,19 @@ function refreshActive() {
 
 function goMine() {
   if (!isLoggedIn()) {
-    uni.navigateTo({
-      url: '/pages/login/login?redirect=' + encodeURIComponent('/pages/consult/index'),
-    })
+    beginLogin('/pages/consult/index')
     return
   }
   uni.navigateTo({ url: '/pages/consult/index' })
 }
 
 function goLogin() {
-  uni.navigateTo({ url: '/pages/login/login' })
+  beginLogin()
 }
 
 function goOrders(tab: string) {
   if (!isLoggedIn()) {
-    uni.navigateTo({
-      url: '/pages/login/login?redirect=' + encodeURIComponent('/pages/order/list?tab=' + tab),
-    })
+    beginLogin('/pages/order/list?tab=' + tab)
     return
   }
   uni.reLaunch({ url: `/pages/order/list?tab=${tab}` })

@@ -2,15 +2,13 @@
 import type { ProfileConfig } from '@/mock/types'
 import { store } from '@/store'
 import { getProfile } from '@/services/config'
+import { initAuth } from '@/services/auth'
 
 export default {
   onLaunch() {
-    // 用户态先按本地缓存恢复；静态页阶段的"登录"只写本地 Mock 用户，不换真实 token
-    try {
-      store.user = uni.getStorageSync('user') || null
-    } catch {
-      store.user = null
-    }
+    // 登录态恢复 + 微信授权回跳（?code=&state=）统一在 auth 服务里处理：
+    // 从微信授权页回来时，onLaunch 早于页面渲染，正好在这里用 code 换 token 再回跳目标页
+    initAuth()
     // 品牌档案（业务名 / slogan）由 Mock 数据驱动：换业务时只改 Mock，不改页面文案
     getProfile().then((d: ProfileConfig) => {
       store.profile = d

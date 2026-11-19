@@ -6,4 +6,26 @@ export const API_BASE = import.meta.env.VITE_API_BASE || '/api'
 export const DEV_PORT = Number(import.meta.env.VITE_DEV_PORT || 5174)
 export const MOCK_DELAY = Number(import.meta.env.VITE_MOCK_DELAY || 0)
 
-export const env = { APP_ENV, APP_TITLE, BRAND_NAME, API_BASE, DEV_PORT, MOCK_DELAY }
+// ── 微信网页授权（H5 登录）──
+// mock：本地模拟授权，不需要公众号资质（开发/演示/自动化默认）
+// real：真实跳转微信授权页，必须配好服务号 AppID 与公众平台「网页授权域名」
+export const WX_AUTH_MODE = (import.meta.env.VITE_WX_AUTH_MODE || 'mock') as 'mock' | 'real'
+// 服务号 AppID 是公开标识（不是密钥），可以进仓库；AppSecret 只能放后端环境变量
+export const WX_APP_ID = import.meta.env.VITE_WX_APP_ID || ''
+// snsapi_userinfo：弹授权页、可拿昵称头像（符合「用户同意即登录」）；snsapi_base：静默只拿 openid
+export const WX_SCOPE = import.meta.env.VITE_WX_SCOPE || 'snsapi_userinfo'
+// 授权回调基址，必须是「网页授权域名」下的地址；留空取当前站点根目录
+export const WX_REDIRECT_URI = import.meta.env.VITE_WX_REDIRECT_URI || ''
+
+export const env = {
+  APP_ENV,
+  APP_TITLE,
+  BRAND_NAME,
+  API_BASE,
+  DEV_PORT,
+  MOCK_DELAY,
+  WX_AUTH_MODE,
+  WX_APP_ID,
+  WX_SCOPE,
+  WX_REDIRECT_URI,
+}

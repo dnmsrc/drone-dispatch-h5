@@ -69,7 +69,8 @@ import NavBar from '@/components/NavBar.vue'
 import StepBar from '@/components/StepBar.vue'
 import BasisPop from '@/components/BasisPop.vue'
 import SecHead from '@/components/SecHead.vue'
-import { store, invalidateFrom, hydrateForPage, requireLogin } from '@/store'
+import { store, invalidateFrom, hydrateForPage } from '@/store'
+import { requireLogin } from '@/services/auth'
 import { useAckPop } from '@/composables/useAckPop'
 import { VENUES, venueCap } from '@/mock/engines/venues.js'
 import { cityOf } from '@/mock/engines/policy.js'
@@ -87,7 +88,9 @@ const { pop, gate } = useAckPop()
 // 登录门兜底（2026-11-03 用户要求：没登录不允许点进预约）：首页入口已经拦一层，
 // 这里再拦一层，防止直接改地址、或从别的页面深链进来绕过入口。
 onLoad(() => {
-  requireLogin('/pages/apply/venue')
+  // 页面加载兜底（无用户交互）：real 模式下先弹一次确认再跳微信授权，
+  // 否则微信会把「页面加载即跳授权」固化成快照页（只显示「点击访问完整网页」）
+  requireLogin('/pages/apply/venue', { fromClick: false })
 })
 
 function capOf(v: Record<string, unknown>) {

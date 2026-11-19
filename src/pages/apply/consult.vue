@@ -202,6 +202,7 @@ import {
   setConsult,
   isLoggedIn,
 } from '@/store'
+import { beginLogin } from '@/services/auth'
 import { useAckPop } from '@/composables/useAckPop'
 import { getSilent, postSilent } from '@/utils/request'
 import { needsConsult, phaseOf, STATUS_TEXT, DOOR_TEXT, fmtStamp } from '@/mock/engines/consult.js'
@@ -385,13 +386,7 @@ async function submit(force: boolean) {
   if (!gate()) return
   if (!isLoggedIn()) {
     uni.showToast({ title: '请先登录再提交咨询单', icon: 'none' })
-    setTimeout(
-      () =>
-        uni.navigateTo({
-          url: '/pages/login/login?redirect=' + encodeURIComponent('/pages/apply/consult'),
-        }),
-      400,
-    )
+    setTimeout(() => beginLogin('/pages/apply/consult'), 400)
     return
   }
   submitting.value = true
@@ -405,16 +400,10 @@ async function submit(force: boolean) {
       conflict.value = r.data
       conflictShow.value = true
     } else if (r && r.code === 40100) {
-      // 登录凭证在服务端失效（token 过期 / 服务端重启）：说清原因并回登录页，登录后回到本页继续提交。
+      // 登录凭证在服务端失效（token 过期 / 服务端重启）：说清原因并重新登录，登录后回到本页继续提交。
       // 原来的通用提示是「请先登录」，用户明明登录着时会以为前端又拦了一次（2026-11-03 用户报告）。
       uni.showToast({ title: '登录状态已失效，请重新登录', icon: 'none', duration: 2600 })
-      setTimeout(
-        () =>
-          uni.navigateTo({
-            url: '/pages/login/login?redirect=' + encodeURIComponent('/pages/apply/consult'),
-          }),
-        700,
-      )
+      setTimeout(() => beginLogin('/pages/apply/consult'), 700)
     } else uni.showToast({ title: (r && r.msg) || '提交失败', icon: 'none' })
   } finally {
     submitting.value = false

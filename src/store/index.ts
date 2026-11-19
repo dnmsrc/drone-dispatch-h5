@@ -436,21 +436,7 @@ export function isLoggedIn(): boolean {
 }
 
 /**
- * 登录门：没登录不允许点进预约。
- * 未登录 → 提示 + 去登录页，并把「登录后回哪里」带过去（登录成功直接回到原入口，不绕回首页）。
+ * 登录门已移到 services/auth.ts（beginLogin / requireLogin）。
+ * 原因：登录流程要调微信授权与后端换票，属于「服务层编排」；放在 store 会让
+ * store ↔ request 形成循环引用。store 只保留登录态本身（token / user / 持久化）。
  */
-export function requireLogin(redirect?: string): boolean {
-  if (isLoggedIn()) return true
-  const back = redirect || '/pages/apply/venue'
-  uni.showToast({ title: '请先登录再预约', icon: 'none' })
-  setTimeout(() => {
-    // 跳走前先收掉 toast：uni 的 toast 是全局容器，跨页跳转后会在新页面上留一块空壳
-    try {
-      uni.hideToast()
-    } catch {
-      /* ignore */
-    }
-    uni.navigateTo({ url: '/pages/login/login?redirect=' + encodeURIComponent(back) })
-  }, 420)
-  return false
-}

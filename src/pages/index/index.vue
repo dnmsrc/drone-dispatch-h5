@@ -117,7 +117,8 @@ import NightSky from '@/components/NightSky.vue'
 import DroneLogo from '@/components/DroneLogo.vue'
 import TabBar from '@/components/TabBar.vue'
 import { get, getSilent } from '@/utils/request'
-import { store, newApply, requireLogin, isLoggedIn } from '@/store'
+import { store, newApply, isLoggedIn } from '@/store'
+import { requireLogin } from '@/services/auth'
 import { photo } from '@/mock/media'
 
 interface Tier {

@@ -1,6 +1,10 @@
-// 统一请求封装：自动带 token、统一错误提示、401 跳登录。
+// 统一请求封装：自动带 token、统一错误提示、401 引导重新登录。
 // 静态页阶段把请求落到 @/mock/router（浏览器内存 Mock 路由），页面里的 get/post 调用与原型一致；
 // 接 drone-dispatch-server 时只改本文件的 transport 实现，页面无需改动。
+//
+// 登录相关：本文件不做登录编排（避免 request ↔ auth ↔ store 循环引用），
+// 401 只负责「清干净本地登录态 + 把用户带到登录页」，真实微信授权的发起交给
+// services/auth.ts（登录页在微信内会自动承接）。登录页已在栈顶时不再重复跳转，防止死循环。
 import { mockRequest } from '@/mock/router'
 import { store } from '@/store'
 
@@ -23,6 +27,22 @@ function curRoute(): string {
     return route ? '/' + route : ''
   } catch {
     return ''
+  }
+}
+
+/** 带去登录页；已经在登录页就不再压栈（否则 401 循环会把页面栈刷满） */
+function toLogin(back: string): void {
+  if (curRoute().startsWith('/pages/login/login')) return
+  uni.navigateTo({
+    url: '/pages/login/login' + (back ? '?redirect=' + encodeURIComponent(back) : ''),
+  })
+}
+
+function hideToastSafely(): void {
+  try {
+    uni.hideToast()
+  } catch {
+    /* ignore */
   }
 }
 
@@ -51,14 +71,8 @@ export function api<T = any>(
           uni.showToast({ title: '登录状态已失效，请重新登录', icon: 'none', duration: 2500 })
           const back = curRoute()
           setTimeout(() => {
-            try {
-              uni.hideToast()
-            } catch {
-              /* ignore */
-            }
-            uni.navigateTo({
-              url: '/pages/login/login' + (back ? '?redirect=' + encodeURIComponent(back) : ''),
-            })
+            hideToastSafely()
+            toLogin(back)
           }, 800)
         }
         return Promise.reject(res as ApiError)
@@ -72,14 +86,8 @@ export function api<T = any>(
           uni.showToast({ title: '请先登录', icon: 'none', duration: 2000 })
           const back = curRoute()
           setTimeout(() => {
-            try {
-              uni.hideToast()
-            } catch {
-              /* ignore */
-            }
-            uni.navigateTo({
-              url: '/pages/login/login' + (back ? '?redirect=' + encodeURIComponent(back) : ''),
-            })
+            hideToastSafely()
+            toLogin(back)
           }, 500)
         }
         return Promise.reject(err)

@@ -57,6 +57,8 @@ const db = {
   consults: clone(fixtures.consults) as Json[],
   contracts: clone(fixtures.contracts) as Json[],
   user: null as Json | null,
+  // 模拟微信授权建档：openid → 用户（同一 openid 复用一个账号，等价后端 users.openid 唯一索引）
+  users: [] as Json[],
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -366,17 +368,50 @@ route('GET', '/venue/search', ({ query }) => {
   return ok({ venues: list })
 })
 
-// ---- 鉴权（模拟微信授权） ----
+// ---- 鉴权（模拟微信网页授权 code2session） ----
+// 真实链路：前端拿到微信回跳的 code → 后端用 AppSecret 调
+//   GET https://api.weixin.qq.com/sns/oauth2/access_token?appid=&secret=&code=&grant_type=authorization_code
+//   拿到 openid/access_token → GET /sns/userinfo 取昵称头像 → 按 openid 建档 → 签发自己的 token。
+// Mock 阶段用 mockOpenid 顶替 openid（前端存在本地，保证同一浏览器重登不换人），
+// 接口形状保持 { code }，真实后端接管时前端代码不用改。
+function mockHash(s: string): string {
+  let h = 5381
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0
+  return h.toString(36)
+}
+
+function publicUser(u: Json): Json {
+  return { id: u.id, nickname: u.nickname, avatar: u.avatar, phone: u.phone }
+}
+
 route('POST', '/auth/wechat-login', ({ body }) => {
-  const nickname = body.nickname || '微信用户'
-  const user = { id: 'u-demo', nickname, avatar: avatar('wechat-demo'), phone: '135****0000' }
-  db.user = user
-  return ok({ token: 'utk_static_mock_token', user }, '登录成功')
+  if (!body.code) fail('缺少微信授权 code（请重新发起授权）', 40001)
+  const openid = String(body.mockOpenid || 'oMock_' + mockHash(String(body.code)))
+  let u = db.users.find((x) => x.openid === openid)
+  if (!u) {
+    const seq = String(db.users.length + 1).padStart(4, '0')
+    u = {
+      id: 'u' + (9000 + db.users.length),
+      openid,
+      nickname: '微信用户_' + seq,
+      avatar: avatar('wechat-' + seq),
+      phone: '135****' + seq.slice(-4),
+    }
+    db.users.push(u)
+  }
+  db.user = u
+  return ok({ token: 'utk_mock_' + mockHash(openid), user: publicUser(u) }, '登录成功')
 })
 
 route('POST', '/auth/logout', () => {
   db.user = null
   return ok({})
+})
+
+// 恢复登录态 / 校验 token 是否还有效（前端启动时可用；403/401 由 authUser 统一抛 40100）
+route('GET', '/auth/me', () => {
+  const u = authUser()
+  return ok({ user: publicUser(u) })
 })
 
 // ---- 订单 ----
