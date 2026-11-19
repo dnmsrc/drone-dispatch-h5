@@ -9,9 +9,10 @@
     </NightSky>
 
     <view class="panel">
-      <!-- ① 微信内 + 真实授权：点一次 → 微信授权页 → 用户点「允许」→ 自动登录并回到刚才的页面 -->
-      <block v-if="inWechat && realMode">
-        <button class="wx-btn" :disabled="loading" @click="startReal">
+      <!-- ① 微信授权通道（只在微信内出现）：能调起微信授权就走这条，用户点「允许」即登录 -->
+      <block v-if="view === 'wx'">
+        <!-- 真实模式：点一次 → 微信授权页 → 用户点「允许」→ 自动登录并回到刚才的页面 -->
+        <button v-if="realMode" class="wx-btn" :disabled="loading" @click="startReal">
           <svg
             viewBox="0 0 24 24"
             width="20"
@@ -25,40 +26,78 @@
           </svg>
           <text>{{ loading ? '正在唤起微信授权…' : '微信授权登录' }}</text>
         </button>
-        <text class="hint">点击后跳转微信授权页，同意即自动登录，并回到刚才的页面</text>
+        <text v-if="realMode" class="hint"
+          >点击后跳转微信授权页，同意即自动登录，并回到刚才的页面</text
+        >
+
+        <!-- 模拟模式：没有公众号资质时用，演示「用户点允许 → 自动登录」的完整交互 -->
+        <view v-else class="mock-card">
+          <view class="auth-head">
+            <view class="auth-logo"><DroneLogo :size="86" :float="false" /></view>
+            <text class="auth-title">{{ brandName }} 申请</text>
+            <text class="auth-sub">获取你的昵称、头像</text>
+          </view>
+          <view class="auth-user">
+            <image class="auth-avatar" :src="demoAvatar" mode="aspectFill" />
+            <view class="auth-userinfo">
+              <text class="auth-nick">微信用户（模拟）</text>
+              <text class="auth-tip">微信个人信息</text>
+            </view>
+          </view>
+          <view class="auth-btns">
+            <button class="btn deny" @click="deny">拒绝</button>
+            <button class="btn allow" :disabled="loading" @click="allow">
+              {{ loading ? '登录中…' : '允许' }}
+            </button>
+          </view>
+          <text class="auth-note">演示模式 · 模拟微信网页授权，不会真的读取你的微信资料</text>
+        </view>
+
+        <view class="alt" @click="view = 'sms'">
+          <text class="alt-text">使用手机号登录</text>
+        </view>
       </block>
 
-      <!-- ② 微信内 + 模拟授权：没有公众号资质时用，演示「用户点允许 → 自动登录」的完整交互 -->
-      <view v-else-if="inWechat" class="mock-card">
-        <view class="auth-head">
-          <view class="auth-logo"><DroneLogo :size="86" :float="false" /></view>
-          <text class="auth-title">{{ brandName }} 申请</text>
-          <text class="auth-sub">获取你的昵称、头像</text>
-        </view>
-        <view class="auth-user">
-          <image class="auth-avatar" :src="demoAvatar" mode="aspectFill" />
-          <view class="auth-userinfo">
-            <text class="auth-nick">微信用户（模拟）</text>
-            <text class="auth-tip">微信个人信息</text>
-          </view>
-        </view>
-        <view class="auth-btns">
-          <button class="btn deny" @click="deny">拒绝</button>
-          <button class="btn allow" :disabled="loading" @click="allow">
-            {{ loading ? '登录中…' : '允许' }}
-          </button>
-        </view>
-        <text class="auth-note">演示模式 · 模拟微信网页授权，不会真的读取你的微信资料</text>
-      </view>
-
-      <!-- ③ 微信外：本系统只支持微信内登录，引导扫码 -->
-      <view v-else class="scan-card">
-        <text class="scan-title">请用微信扫码打开</text>
-        <text class="scan-desc">
-          本系统仅支持在微信内登录。请用手机微信扫描预约二维码进入，或复制下方链接后在微信中打开。
+      <!-- ② 手机号验证码通道：微信外默认走这条（网页授权必须在微信内置浏览器发起）；微信内也可切换 -->
+      <view v-else class="sms-card">
+        <text class="sms-title">手机号登录</text>
+        <text class="sms-sub">
+          {{
+            inWechat
+              ? '不用微信授权，用手机号 + 验证码也能登录'
+              : '当前不在微信内，微信授权登录需要在微信中打开；这里可以直接用手机号登录'
+          }}
         </text>
-        <button class="btn-copy" @click="copyLink">复制当前链接</button>
-        <button class="btn-back" @click="goHome">先随便看看</button>
+        <view class="field">
+          <input
+            v-model="phone"
+            class="input"
+            type="number"
+            maxlength="11"
+            placeholder="请输入手机号"
+            placeholder-class="ph"
+          />
+        </view>
+        <view class="field">
+          <input
+            v-model="code"
+            class="input"
+            type="number"
+            maxlength="6"
+            placeholder="6 位验证码"
+            placeholder-class="ph"
+          />
+          <text class="send" :class="{ disabled: counting }" @click="sendCode">
+            {{ counting ? countdown + 's 后重发' : '获取验证码' }}
+          </text>
+        </view>
+        <button class="sms-btn" :disabled="!canSubmit" @click="submitSms">
+          {{ submitting ? '登录中…' : '登录' }}
+        </button>
+        <text v-if="demoCode" class="sms-note">演示环境：验证码固定为 {{ demoCode }}</text>
+        <view v-if="inWechat" class="alt" @click="view = 'wx'">
+          <text class="alt-text">返回微信授权登录</text>
+        </view>
       </view>
 
       <view class="agree">
@@ -72,11 +111,11 @@
 </template>
 
 <script setup lang="ts">
-// 登录页（三种角色，由环境和配置决定，不靠人工切换）：
-// ① 微信内 + real：真实微信网页授权（OAuth2），用户点「允许」后由 App.onLaunch 处理 code 回跳；
-// ② 微信内 + mock：模拟授权层，本地/演示/自动化跑完整「同意即登录」；
-// ③ 微信外：提示扫码（网页授权只能在微信内置浏览器里发起）。
-import { computed, ref } from 'vue'
+// 登录页：两条通道，按环境自动决定首屏形态（不靠人工切换）
+// ① 微信内：能调起微信授权就展示授权入口 —— real 点按钮跳微信授权页，mock 展示模拟授权卡；
+// ② 手机号验证码：微信外默认走这条（网页授权只能在微信内置浏览器发起），微信内也可切换过来。
+// 两条通道登录成功后的收尾一致：写登录态 → jumpAfterLogin(redirect)。
+import { computed, onUnmounted, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import NightSky from '@/components/NightSky.vue'
 import DroneLogo from '@/components/DroneLogo.vue'
@@ -84,7 +123,15 @@ import { store } from '@/store'
 import { get } from '@/utils/request'
 import { avatar } from '@/mock/media'
 import { isWeixin } from '@/utils/wechat'
-import { beginLogin, completeMockLogin, jumpAfterLogin, loginMode } from '@/services/auth'
+import {
+  beginLogin,
+  completeMockLogin,
+  isValidPhone,
+  jumpAfterLogin,
+  loginMode,
+  loginWithSms,
+  sendSmsCode,
+} from '@/services/auth'
 
 const inWechat = isWeixin()
 const realMode = loginMode() === 'real'
@@ -92,7 +139,22 @@ const loading = ref(false)
 const redirect = ref('')
 const demoAvatar = avatar('wechat-demo')
 
+// 首屏形态：微信内先给微信授权；微信外只能手机号（页面加载即判定一次，不在两种形态间来回跳）
+const view = ref<'wx' | 'sms'>(inWechat ? 'wx' : 'sms')
+
+// ── 手机号验证码通道状态 ──
+const phone = ref('')
+const code = ref('')
+const submitting = ref(false)
+const counting = ref(false)
+const countdown = ref(0)
+const demoCode = ref('')
+let timer: ReturnType<typeof setInterval> | null = null
+
 const brandName = computed(() => store.profile?.brand?.appName || '星穹 SkyShow')
+const canSubmit = computed(
+  () => isValidPhone(phone.value) && code.value.length === 6 && !submitting.value,
+)
 
 onShow(() => {
   if (!store.profile) {
@@ -137,30 +199,64 @@ function deny() {
   }, 700)
 }
 
-function linkOf(): string {
-  try {
-    if (typeof window !== 'undefined' && window.location) return window.location.href
-  } catch {
-    /* ignore */
-  }
-  return ''
-}
-
-function copyLink() {
-  const url = linkOf()
-  if (!url) {
-    uni.showToast({ title: '请复制浏览器地址栏里的链接', icon: 'none' })
+// 手机号通道：先发码再登录，与真实短信接口同一套交互（60s 倒计时）
+function sendCode() {
+  if (counting.value) return
+  if (!isValidPhone(phone.value)) {
+    uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
     return
   }
-  uni.setClipboardData({
-    data: url,
-    success: () => uni.showToast({ title: '已复制，请到微信中打开', icon: 'none' }),
-  })
+  sendSmsCode(phone.value)
+    .then((d) => {
+      demoCode.value = d.demoCode || ''
+      uni.showToast({
+        title: d.demoCode ? '演示验证码：' + d.demoCode : '验证码已发送',
+        icon: 'none',
+        duration: 2500,
+      })
+      startCountdown(d.ttl || 60)
+    })
+    .catch(() => {
+      /* request 层已提示失败原因 */
+    })
 }
 
-function goHome() {
-  uni.reLaunch({ url: '/pages/index/index' })
+function startCountdown(sec: number) {
+  stopCountdown()
+  counting.value = true
+  countdown.value = sec
+  timer = setInterval(() => {
+    countdown.value -= 1
+    if (countdown.value <= 0) stopCountdown()
+  }, 1000)
 }
+
+function stopCountdown() {
+  counting.value = false
+  countdown.value = 0
+  if (timer) {
+    clearInterval(timer)
+    timer = null
+  }
+}
+
+function submitSms() {
+  if (!canSubmit.value) return
+  submitting.value = true
+  loginWithSms(phone.value, code.value)
+    .then(() => {
+      uni.showToast({ title: '登录成功', icon: 'success' })
+      setTimeout(() => jumpAfterLogin(redirect.value || '/pages/index/index'), 400)
+    })
+    .catch(() => {
+      /* request 层已提示失败原因 */
+    })
+    .finally(() => {
+      submitting.value = false
+    })
+}
+
+onUnmounted(stopCountdown)
 </script>
 
 <style scoped>
@@ -320,54 +416,87 @@ function goHome() {
   margin-top: 26rpx;
 }
 
-/* 扫码引导卡（微信外） */
-.scan-card {
+/* 手机号验证码卡（微信外默认 / 微信内备选） */
+.sms-card {
   width: 100%;
   background: var(--card);
   border-radius: 32rpx;
   box-shadow: var(--shadow);
-  padding: 44rpx 36rpx 34rpx;
+  padding: 44rpx 36rpx 30rpx;
   display: flex;
   flex-direction: column;
-  align-items: center;
 }
-.scan-title {
+.sms-title {
   font-size: var(--fs-7);
   font-weight: var(--fw-bold);
 }
-.scan-desc {
-  margin-top: 18rpx;
-  font-size: var(--fs-3);
+.sms-sub {
+  margin-top: 12rpx;
+  font-size: var(--fs-2);
   color: var(--text-3);
   line-height: 1.7;
-  text-align: center;
 }
-.btn-copy {
-  margin-top: 36rpx;
+.field {
+  margin-top: 26rpx;
+  display: flex;
+  align-items: center;
+  height: 96rpx;
+  padding: 0 24rpx;
+  border-radius: 18rpx;
+  background: var(--bg);
+}
+.input {
+  flex: 1;
+  height: 100%;
+  font-size: var(--fs-5);
+  color: var(--text-2);
+}
+.ph {
+  color: var(--text-4);
+}
+.send {
+  flex: none;
+  padding-left: 20rpx;
+  font-size: var(--fs-3);
+  color: var(--primary);
+}
+.send.disabled {
+  color: var(--text-4);
+}
+.sms-btn {
+  margin-top: 32rpx;
   width: 100%;
+  border: none;
+  border-radius: 999rpx;
+  padding: 22rpx 0;
   background: linear-gradient(135deg, #4a6cf7 0%, #6c8bff 100%);
   color: #fff;
   font-size: var(--fs-6);
   font-weight: var(--fw-semibold);
-  border-radius: 999rpx;
-  padding: 20rpx 0;
-  border: none;
   box-shadow: 0 10rpx 24rpx rgba(74, 108, 247, 0.32);
 }
-.btn-copy::after {
+.sms-btn::after {
   border: none;
 }
-.btn-back {
-  margin-top: 20rpx;
-  width: 100%;
+.sms-btn[disabled] {
   background: var(--bg-2);
-  color: var(--text-2);
-  font-size: var(--fs-6);
-  border-radius: 999rpx;
-  padding: 20rpx 0;
-  border: none;
+  color: var(--text-4);
+  box-shadow: none;
 }
-.btn-back::after {
-  border: none;
+.sms-note {
+  margin-top: 20rpx;
+  font-size: var(--fs-1);
+  color: var(--text-4);
+  text-align: center;
+}
+.alt {
+  margin-top: 30rpx;
+  display: flex;
+  justify-content: center;
+}
+.alt-text {
+  font-size: var(--fs-3);
+  color: var(--text-3);
+  text-decoration: underline;
 }
 </style>

@@ -9,6 +9,10 @@
 // 两种模式（VITE_WX_AUTH_MODE）：
 // - mock：本地模拟微信授权，不需要公众号资质；登录页展示模拟授权层，点「允许」即登录。
 // - real：真实跳转微信授权页（仅微信内可用）；未配置 AppID 时自动降级 mock，避免用户卡死。
+//
+// 第二条通道（手机号验证码）：微信外无法发起网页授权，直接用手机号 + 验证码登录；
+// 微信内也能切换（用户拒绝授权、或只想用手机号）。两条通道登录成功后的收尾完全一致：
+// 都落到 setLogin(token, user) + jumpAfterLogin(redirect)，页面侧不需要区分用户是怎么登进来的。
 import { post, postSilent } from '@/utils/request'
 import { store, setLogin, isLoggedIn, logout as clearSession } from '@/store'
 import { WX_APP_ID, WX_AUTH_MODE, WX_SCOPE, WX_REDIRECT_URI } from '@/config/env'
@@ -128,7 +132,7 @@ export function beginLogin(redirect?: string, opts: { fromClick?: boolean } = {}
     return
   }
 
-  // mock 模式，或真实模式下在微信外打开（这时无法网页授权，登录页会提示扫码）
+  // 进登录页：mock 模式显示模拟授权卡；真实模式在微信外无法网页授权，登录页直接给手机号验证码
   uni.navigateTo({ url: LOGIN_PAGE + '?redirect=' + encodeURIComponent(back) })
 }
 
@@ -236,4 +240,36 @@ export function initAuth(): void {
 export function logout(): void {
   postSilent('/auth/logout').catch(() => {})
   clearSession()
+}
+
+// ── 手机号验证码（第二条通道：微信外无法网页授权时用，微信内也可作为备选）──
+// 契约（由后端 drone-dispatch-server 实现）：
+//   POST /auth/sms/code  { phone }         → { ttl }        真实后端可额外返回 demoCode 供演示
+//   POST /auth/sms/login { phone, code }   → { token, user }
+// 真实后端必须做频控与风控（同号 60s 一次、每日上限、IP 限流、必要时图形验证码），
+// 否则短信接口会被刷、产生真实费用。
+export const PHONE_RE = /^1[3-9]\d{9}$/
+
+export function isValidPhone(phone: string): boolean {
+  return PHONE_RE.test(phone)
+}
+
+export interface SmsCodeResp {
+  /** 验证码有效期（秒），用于前端 60s 倒计时 */
+  ttl: number
+  /** 仅 Mock/演示环境返回；前端据此提示「演示验证码」，真实后端不要返回该字段 */
+  demoCode?: string
+}
+
+/** 发送短信验证码 */
+export function sendSmsCode(phone: string): Promise<SmsCodeResp> {
+  return post<SmsCodeResp>('/auth/sms/code', { phone })
+}
+
+/** 手机号 + 验证码登录：成功后与微信通道共用同一套登录态写入，页面无需区分来源 */
+export function loginWithSms(phone: string, code: string): Promise<LoginResp> {
+  return post<LoginResp>('/auth/sms/login', { phone, code }).then((d) => {
+    setLogin(d.token, d.user)
+    return d
+  })
 }

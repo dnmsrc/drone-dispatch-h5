@@ -414,6 +414,44 @@ route('GET', '/auth/me', () => {
   return ok({ user: publicUser(u) })
 })
 
+// ---- 手机号验证码登录（微信外兜底通道）----
+// 真实后端接短信服务商（阿里云/腾讯云）并向 users 表落 phone；Mock 用内存假码，
+// 响应形状与真实接口一致，前端代码切后端时不需要改。
+const smsCodes = new Map<string, string>()
+const PHONE_RE = /^1[3-9]\d{9}$/
+
+route('POST', '/auth/sms/code', ({ body }) => {
+  const phone = String(body.phone || '')
+  if (!PHONE_RE.test(phone)) fail('请输入正确的手机号', 40002)
+  const code = '123456'
+  smsCodes.set(phone, code)
+  // demoCode 只给演示/自动化用：前端拿它提示「验证码固定为 123456」；真实后端不要返回
+  return ok({ ttl: 60, demoCode: code }, '验证码已发送')
+})
+
+route('POST', '/auth/sms/login', ({ body }) => {
+  const phone = String(body.phone || '')
+  const code = String(body.code || '')
+  if (!PHONE_RE.test(phone)) fail('请输入正确的手机号', 40002)
+  if (!code) fail('请输入验证码', 40003)
+  if (smsCodes.get(phone) !== code) fail('验证码不正确或已过期', 40004)
+  smsCodes.delete(phone)
+
+  let u = db.users.find((x) => x.phone === phone)
+  if (!u) {
+    const seq = String(db.users.length + 1).padStart(4, '0')
+    u = {
+      id: 'u' + (9000 + db.users.length),
+      nickname: '用户' + phone.slice(-4),
+      avatar: avatar('phone-' + seq),
+      phone,
+    }
+    db.users.push(u)
+  }
+  db.user = u
+  return ok({ token: 'utk_mock_' + mockHash(phone), user: publicUser(u) }, '登录成功')
+})
+
 // ---- 订单 ----
 
 /**

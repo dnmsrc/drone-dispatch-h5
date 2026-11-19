@@ -15,15 +15,19 @@
 - **接后端时**：只改 `src/utils/request.ts` 的 transport 与 `src/config/env.ts` 的 `VITE_API_BASE`，页面与 store 不用动。
 - 原型专有的评审辅助浮层（`proto-tip.js`）按约定不迁入，这是与原型唯一的预期视觉差异。
 
-## 登录（微信扫码入口）
+## 登录（微信授权 / 手机号双通道）
 
-入口只有一个：**用二维码打开 H5**（微信内、普通浏览器都能打开页面，可匿名浏览）。**登录只在微信内可用**；需要登录时自动请求微信网页授权，用户点「允许」即自动登录，并回到刚才的页面继续操作。
+入口只有一个：**用二维码打开 H5**（微信内、普通浏览器都能打开页面，可匿名浏览）。需要登录时按环境自动选通道：
 
-- 登录编排集中在 `src/services/auth.ts`（`beginLogin` / `requireLogin` / `resumeFromCallback` / `logout`），页面不自己拼跳转；微信环境判断与授权 URL 在 `src/utils/wechat.ts`。
+- **微信内**：优先微信网页授权，用户点「允许」即自动登录并回到刚才那页；也可切「使用手机号登录」；
+- **微信外**（网页授权在微信外无法发起）：直接用**手机号 + 验证码**登录。
+
+- 登录编排集中在 `src/services/auth.ts`（`beginLogin` / `requireLogin` / `resumeFromCallback` / `logout`，手机号通道 `sendSmsCode` / `loginWithSms`），页面不自己拼跳转；微信环境判断与授权 URL 在 `src/utils/wechat.ts`。
 - 两种模式（`VITE_WX_AUTH_MODE`）：`mock`＝本地模拟授权（无需公众号资质，开发/演示/自动化默认）；`real`＝真实跳转微信授权页（需已认证服务号 AppID + 公众平台「网页授权域名」，未配 AppID 会自动降级 mock）。
 - 页面加载兜底会先弹确认再跳授权：微信会把「无用户交互的自动跳转」固化成快照页（只显示「点击访问完整网页」），所以深链进受保护页时不能直接跳。
+- 手机号验证码：60s 重发倒计时；Mock 环境验证码固定 `123456`（发码后由接口返回的 `demoCode` 决定是否提示）。
 - 真实环境的资质、后端接口契约、部署与排错清单见 [docs/微信登录接入说明.md](docs/微信登录接入说明.md)。
-- 自动化：`node ../.shots-tmp/h5-login-e2e.mjs`（mock 全流程，15 断言）、`node ../.shots-tmp/h5-login-real-e2e.mjs`（real 协议链路，21 断言）。
+- 自动化：`node ../.shots-tmp/h5-login-e2e.mjs`（mock 全流程含手机号通道，24 断言）、`node ../.shots-tmp/h5-login-real-e2e.mjs`（real 协议链路，21 断言）。
 
 ## 技术栈
 
@@ -38,7 +42,7 @@
 src/
   pages/            页面（pages.json 注册，navigationStyle=自定义）
     index/          首页
-    login/          登录（微信授权发起 / 模拟授权 / 微信外扫码引导）
+    login/          登录（微信授权发起 / 模拟授权 / 手机号验证码）
     apply/          申请流程 9 页：disclosure 申请说明 / venue 场地 / need 规模与内容 /
                     date 日期时段 / quote 报价区间 / consult 人工咨询与派单 /
                     contract 电子合同 / pay 付款节点 / progress 进度
