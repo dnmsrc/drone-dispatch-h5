@@ -1,0 +1,1400 @@
+{
+  "profile": {
+    "key": "drone-show",
+    "name": "无人机编队表演",
+    "brand": {
+      "appName": "星穹 SkyShow",
+      "adminTitle": "星穹派单管理后台",
+      "slogan": "无人机编队灯光表演 · 一站式预约",
+      "footer": "星穹 SkyShow · 无人机编队灯光表演预约派单平台",
+      "description": "无人机编队灯光表演一站式预约平台"
+    }
+  },
+  "pricing": {
+    "priceRules": {
+      "tiers": [
+        {
+          "drones": 100,
+          "price": 18800,
+          "desc": "适合小型告白、生日惊喜"
+        },
+        {
+          "drones": 200,
+          "price": 28800,
+          "desc": "适合婚礼、周年庆典"
+        },
+        {
+          "drones": 300,
+          "price": 38800,
+          "desc": "适合大型求婚、品牌发布"
+        },
+        {
+          "drones": 500,
+          "price": 58800,
+          "desc": "适合企业年会、城市活动"
+        },
+        {
+          "drones": 1000,
+          "price": 98800,
+          "desc": "适合大型节庆、城市级表演"
+        }
+      ],
+      "durations": [
+        {
+          "minutes": 10,
+          "extra": 0,
+          "label": "10 分钟（标准）"
+        },
+        {
+          "minutes": 15,
+          "extra": 6000,
+          "label": "15 分钟"
+        },
+        {
+          "minutes": 20,
+          "extra": 12000,
+          "label": "20 分钟"
+        }
+      ],
+      "customTextPrice": 2000,
+      "customLogoPrice": 5000,
+      "addons": [
+        {
+          "key": "music",
+          "label": "专属音乐编曲",
+          "price": 1000
+        },
+        {
+          "key": "narration",
+          "label": "现场旁白解说",
+          "price": 2000
+        },
+        {
+          "key": "aerial",
+          "label": "双机位航拍记录",
+          "price": 3000
+        },
+        {
+          "key": "urgent",
+          "label": "加急服务（48h 内安排）",
+          "price": 8000
+        }
+      ],
+      "patterns": [
+        {
+          "key": "heart",
+          "label": "爱心"
+        },
+        {
+          "key": "ring",
+          "label": "钻戒"
+        },
+        {
+          "key": "star",
+          "label": "星辰"
+        },
+        {
+          "key": "phoenix",
+          "label": "凤凰"
+        },
+        {
+          "key": "rose",
+          "label": "玫瑰"
+        },
+        {
+          "key": "moon",
+          "label": "月亮船"
+        }
+      ],
+      "timeSlots": ["19:00-20:00", "20:00-21:00", "21:00-22:00"],
+      "payExpireMinutes": 15
+    },
+    "refundRules": [
+      {
+        "minHours": 168,
+        "ratio": 0.9,
+        "label": "距表演 7 天以上，退 90%"
+      },
+      {
+        "minHours": 72,
+        "ratio": 0.5,
+        "label": "距表演 3-7 天，退 50%"
+      },
+      {
+        "minHours": 24,
+        "ratio": 0.2,
+        "label": "距表演 1-3 天，退 20%"
+      },
+      {
+        "minHours": 0,
+        "ratio": 0,
+        "label": "距表演不足 24 小时，不可退款"
+      }
+    ],
+    "venues": [
+      {
+        "id": "v1",
+        "name": "滨江世纪广场",
+        "address": "杭州市滨江区江南大道 100 号",
+        "lng": 120.212,
+        "lat": 30.208,
+        "enabled": true
+      },
+      {
+        "id": "v2",
+        "name": "奥体中心体育场",
+        "address": "杭州市萧山区博奥路 588 号",
+        "lng": 120.235,
+        "lat": 30.231,
+        "enabled": true
+      },
+      {
+        "id": "v3",
+        "name": "西湖文化广场",
+        "address": "杭州市拱墅区环城北路 47 号",
+        "lng": 120.165,
+        "lat": 30.277,
+        "enabled": true
+      },
+      {
+        "id": "v4",
+        "name": "钱江新城城市阳台",
+        "address": "杭州市上城区解放东路 58 号",
+        "lng": 120.214,
+        "lat": 30.246,
+        "enabled": true
+      },
+      {
+        "id": "v5",
+        "name": "未来科技城中央公园",
+        "address": "杭州市余杭区文一西路 998 号",
+        "lng": 119.998,
+        "lat": 30.279,
+        "enabled": true
+      }
+    ],
+    "bookingWindowDays": 60,
+    "dailyLimit": 3,
+    "defaultSlots": ["19:00-20:00", "20:00-21:00", "21:00-22:00"]
+  },
+  "config": {
+    "dailyLimit": 3,
+    "defaultSlots": ["19:00-20:00", "20:00-21:00", "21:00-22:00"],
+    "bookingWindowDays": 60,
+    "closedDates": ["2026-11-26"],
+    "customHolidays": {
+      "2026-12-03": "店庆日"
+    },
+    "daySlots": {
+      "2026-11-28": ["19:00-20:00", "20:00-21:00", "21:00-22:00"]
+    }
+  },
+  "orders": [
+    {
+      "id": "D20261119-0022",
+      "userId": "u1001",
+      "status": "PENDING_PAY",
+      "droneCount": 300,
+      "duration": 15,
+      "patternPreset": ["heart"],
+      "customText": "嫁给我吧",
+      "customLogo": "",
+      "addons": ["music", "aerial"],
+      "occasion": "求婚仪式",
+      "performDate": "2026-11-28",
+      "timeSlot": "20:00-21:00",
+      "venue": {
+        "type": "preset",
+        "name": "滨江世纪广场",
+        "address": "杭州市滨江区江南大道 100 号",
+        "lng": 120.212,
+        "lat": 30.208
+      },
+      "contact": {
+        "name": "李先生",
+        "phone": "13866668801"
+      },
+      "priceDetail": [
+        {
+          "label": "300 架基础价（含 10 分钟）",
+          "amount": 38800
+        },
+        {
+          "label": "时长 15 分钟加价",
+          "amount": 6000
+        },
+        {
+          "label": "定制文字「嫁给我吧」",
+          "amount": 2000
+        },
+        {
+          "label": "专属音乐编曲",
+          "amount": 1000
+        },
+        {
+          "label": "双机位航拍记录",
+          "amount": 3000
+        }
+      ],
+      "totalAmount": 50800,
+      "payChannel": "",
+      "payTradeNo": "",
+      "paidAt": "",
+      "acceptedBy": "",
+      "acceptedAt": "",
+      "startedAt": "",
+      "completedAt": "",
+      "media": {
+        "photos": ["D20261119-0022-1", "D20261119-0022-2", "D20261119-0022-3", "D20261119-0022-4"],
+        "videos": []
+      },
+      "review": null,
+      "refund": null,
+      "cancelReason": "",
+      "timeline": [
+        {
+          "time": "2026-11-19T04:06:21.983Z",
+          "text": "提交订单，等待支付"
+        }
+      ],
+      "createdAt": "2026-11-19T04:06:21.983Z",
+      "expireAt": "2026-11-19T04:21:21.983Z"
+    },
+    {
+      "id": "D20261118-0001",
+      "userId": "u1001",
+      "status": "PENDING_ACCEPT",
+      "droneCount": 300,
+      "duration": 15,
+      "patternPreset": ["heart"],
+      "customText": "嫁给我吧",
+      "customLogo": "",
+      "addons": ["music", "aerial"],
+      "occasion": "求婚仪式",
+      "performDate": "2026-11-28",
+      "timeSlot": "20:00-21:00",
+      "venue": {
+        "type": "preset",
+        "name": "滨江世纪广场",
+        "address": "杭州市滨江区江南大道 100 号",
+        "lng": 120.212,
+        "lat": 30.208
+      },
+      "contact": {
+        "name": "李先生",
+        "phone": "13866668801"
+      },
+      "priceDetail": [
+        {
+          "label": "300 架基础价（含 10 分钟）",
+          "amount": 38800
+        },
+        {
+          "label": "时长 15 分钟加价",
+          "amount": 6000
+        },
+        {
+          "label": "定制文字「嫁给我吧」",
+          "amount": 2000
+        },
+        {
+          "label": "专属音乐编曲",
+          "amount": 1000
+        },
+        {
+          "label": "双机位航拍记录",
+          "amount": 3000
+        }
+      ],
+      "totalAmount": 50800,
+      "payChannel": "WECHAT",
+      "payTradeNo": "WX20261118100001",
+      "paidAt": "2026-11-18T03:22:00.000Z",
+      "acceptedBy": "",
+      "acceptedAt": "",
+      "startedAt": "",
+      "completedAt": "",
+      "media": {
+        "photos": ["D20261118-0001-1", "D20261118-0001-2", "D20261118-0001-3", "D20261118-0001-4"],
+        "videos": []
+      },
+      "review": null,
+      "refund": null,
+      "cancelReason": "",
+      "timeline": [
+        {
+          "time": "2026-11-18T03:17:00.000Z",
+          "text": "提交订单"
+        },
+        {
+          "time": "2026-11-18T03:22:00.000Z",
+          "text": "支付成功（微信支付）"
+        }
+      ],
+      "createdAt": "2026-11-18T03:17:00.000Z",
+      "expireAt": "2026-11-18T03:32:00.000Z"
+    },
+    {
+      "id": "D20261116-0005",
+      "userId": "u1005",
+      "status": "ACCEPTED",
+      "droneCount": 300,
+      "duration": 15,
+      "patternPreset": ["heart"],
+      "customText": "开业大吉",
+      "customLogo": "",
+      "addons": ["narration"],
+      "occasion": "开业庆典",
+      "performDate": "2026-11-29",
+      "timeSlot": "19:00-20:00",
+      "venue": {
+        "type": "preset",
+        "name": "钱江新城城市阳台",
+        "address": "杭州市上城区解放东路 58 号",
+        "lng": 120.214,
+        "lat": 30.246
+      },
+      "contact": {
+        "name": "王老板",
+        "phone": "15077774442"
+      },
+      "priceDetail": [
+        {
+          "label": "300 架基础价（含 10 分钟）",
+          "amount": 38800
+        },
+        {
+          "label": "时长 15 分钟加价",
+          "amount": 6000
+        },
+        {
+          "label": "定制文字「开业大吉」",
+          "amount": 2000
+        },
+        {
+          "label": "现场旁白解说",
+          "amount": 2000
+        }
+      ],
+      "totalAmount": 48800,
+      "payChannel": "WECHAT",
+      "payTradeNo": "WX20261116100005",
+      "paidAt": "2026-11-16T07:30:00.000Z",
+      "acceptedBy": "operator",
+      "acceptedAt": "2026-11-16T09:25:00.000Z",
+      "startedAt": "",
+      "completedAt": "",
+      "media": {
+        "photos": ["D20261116-0005-1", "D20261116-0005-2", "D20261116-0005-3", "D20261116-0005-4"],
+        "videos": []
+      },
+      "review": null,
+      "refund": null,
+      "cancelReason": "",
+      "timeline": [
+        {
+          "time": "2026-11-16T07:25:00.000Z",
+          "text": "提交订单"
+        },
+        {
+          "time": "2026-11-16T07:30:00.000Z",
+          "text": "支付成功（微信支付）"
+        },
+        {
+          "time": "2026-11-16T09:25:00.000Z",
+          "text": "操作员已接单，表演筹备中"
+        }
+      ],
+      "createdAt": "2026-11-16T07:25:00.000Z",
+      "expireAt": "2026-11-16T07:40:00.000Z"
+    },
+    {
+      "id": "D20261112-0009",
+      "userId": "u1002",
+      "status": "IN_SERVICE",
+      "droneCount": 300,
+      "duration": 15,
+      "patternPreset": ["heart"],
+      "customText": "新婚快乐",
+      "customLogo": "",
+      "addons": ["music", "aerial"],
+      "occasion": "婚礼庆典",
+      "performDate": "2026-11-19",
+      "timeSlot": "19:00-20:00",
+      "venue": {
+        "type": "preset",
+        "name": "未来科技城中央公园",
+        "address": "杭州市余杭区文一西路 998 号",
+        "lng": 119.998,
+        "lat": 30.279
+      },
+      "contact": {
+        "name": "甜甜",
+        "phone": "13722229909"
+      },
+      "priceDetail": [
+        {
+          "label": "300 架基础价（含 10 分钟）",
+          "amount": 38800
+        },
+        {
+          "label": "时长 15 分钟加价",
+          "amount": 6000
+        },
+        {
+          "label": "定制文字「新婚快乐」",
+          "amount": 2000
+        },
+        {
+          "label": "专属音乐编曲",
+          "amount": 1000
+        },
+        {
+          "label": "双机位航拍记录",
+          "amount": 3000
+        }
+      ],
+      "totalAmount": 50800,
+      "payChannel": "WECHAT",
+      "payTradeNo": "WX20261112100009",
+      "paidAt": "2026-11-12T03:38:00.000Z",
+      "acceptedBy": "operator",
+      "acceptedAt": "2026-11-12T05:33:00.000Z",
+      "startedAt": "2026-11-19T19:00:00+08:00",
+      "completedAt": "",
+      "media": {
+        "photos": ["D20261112-0009-1", "D20261112-0009-2", "D20261112-0009-3", "D20261112-0009-4"],
+        "videos": []
+      },
+      "review": null,
+      "refund": null,
+      "cancelReason": "",
+      "timeline": [
+        {
+          "time": "2026-11-12T03:33:00.000Z",
+          "text": "提交订单"
+        },
+        {
+          "time": "2026-11-12T03:38:00.000Z",
+          "text": "支付成功（微信支付）"
+        },
+        {
+          "time": "2026-11-12T05:33:00.000Z",
+          "text": "操作员已接单，表演筹备中"
+        },
+        {
+          "time": "2026-11-19T19:00:00+08:00",
+          "text": "表演开始执行"
+        }
+      ],
+      "createdAt": "2026-11-12T03:33:00.000Z",
+      "expireAt": "2026-11-12T03:48:00.000Z"
+    },
+    {
+      "id": "D20261109-0010",
+      "userId": "u1004",
+      "status": "COMPLETED",
+      "droneCount": 200,
+      "duration": 15,
+      "patternPreset": ["ring", "heart"],
+      "customText": "Marry Me",
+      "customLogo": "",
+      "addons": ["music"],
+      "occasion": "求婚仪式",
+      "performDate": "2026-11-17",
+      "timeSlot": "20:00-21:00",
+      "venue": {
+        "type": "preset",
+        "name": "滨江世纪广场",
+        "address": "杭州市滨江区江南大道 100 号",
+        "lng": 120.212,
+        "lat": 30.208
+      },
+      "contact": {
+        "name": "Ann",
+        "phone": "18633331115"
+      },
+      "priceDetail": [
+        {
+          "label": "200 架基础价（含 10 分钟）",
+          "amount": 28800
+        },
+        {
+          "label": "时长 15 分钟加价",
+          "amount": 6000
+        },
+        {
+          "label": "定制文字「Marry Me」",
+          "amount": 2000
+        },
+        {
+          "label": "专属音乐编曲",
+          "amount": 1000
+        }
+      ],
+      "totalAmount": 37800,
+      "payChannel": "ALIPAY",
+      "payTradeNo": "ALI20261109100010",
+      "paidAt": "2026-11-09T04:55:00.000Z",
+      "acceptedBy": "operator",
+      "acceptedAt": "2026-11-09T06:50:00.000Z",
+      "startedAt": "2026-11-17T20:00:00+08:00",
+      "completedAt": "2026-11-17T20:40:00+08:00",
+      "media": {
+        "photos": ["D20261109-0010-1", "D20261109-0010-2", "D20261109-0010-3", "D20261109-0010-4"],
+        "videos": []
+      },
+      "review": null,
+      "refund": null,
+      "cancelReason": "",
+      "timeline": [
+        {
+          "time": "2026-11-09T04:50:00.000Z",
+          "text": "提交订单"
+        },
+        {
+          "time": "2026-11-09T04:55:00.000Z",
+          "text": "支付成功（支付宝）"
+        },
+        {
+          "time": "2026-11-09T06:50:00.000Z",
+          "text": "操作员已接单，表演筹备中"
+        },
+        {
+          "time": "2026-11-17T20:00:00+08:00",
+          "text": "表演开始执行"
+        },
+        {
+          "time": "2026-11-17T20:40:00+08:00",
+          "text": "表演完成，现场照片已回传"
+        }
+      ],
+      "createdAt": "2026-11-09T04:50:00.000Z",
+      "expireAt": "2026-11-09T05:05:00.000Z"
+    },
+    {
+      "id": "D20261030-0013",
+      "userId": "u1001",
+      "status": "REVIEWED",
+      "droneCount": 300,
+      "duration": 15,
+      "patternPreset": ["heart"],
+      "customText": "宝宝满月啦",
+      "customLogo": "",
+      "addons": ["music", "aerial"],
+      "occasion": "满月宴",
+      "performDate": "2026-11-07",
+      "timeSlot": "19:00-20:00",
+      "venue": {
+        "type": "preset",
+        "name": "钱江新城城市阳台",
+        "address": "杭州市上城区解放东路 58 号",
+        "lng": 120.214,
+        "lat": 30.246
+      },
+      "contact": {
+        "name": "李先生",
+        "phone": "13866668801"
+      },
+      "priceDetail": [
+        {
+          "label": "300 架基础价（含 10 分钟）",
+          "amount": 38800
+        },
+        {
+          "label": "时长 15 分钟加价",
+          "amount": 6000
+        },
+        {
+          "label": "定制文字「宝宝满月啦」",
+          "amount": 2000
+        },
+        {
+          "label": "专属音乐编曲",
+          "amount": 1000
+        },
+        {
+          "label": "双机位航拍记录",
+          "amount": 3000
+        }
+      ],
+      "totalAmount": 50800,
+      "payChannel": "WECHAT",
+      "payTradeNo": "WX20261030100013",
+      "paidAt": "2026-10-30T07:46:00.000Z",
+      "acceptedBy": "operator",
+      "acceptedAt": "2026-10-30T09:41:00.000Z",
+      "startedAt": "2026-11-07T19:00:00+08:00",
+      "completedAt": "2026-11-07T19:40:00+08:00",
+      "media": {
+        "photos": ["D20261030-0013-1", "D20261030-0013-2", "D20261030-0013-3", "D20261030-0013-4"],
+        "videos": []
+      },
+      "review": {
+        "stars": 5,
+        "content": "效果太震撼了！300 架无人机组成的图案非常清晰，家人都很感动，航拍视频也很棒。",
+        "createdAt": "2026-11-08T01:34:33.863Z"
+      },
+      "refund": null,
+      "cancelReason": "",
+      "timeline": [
+        {
+          "time": "2026-10-30T07:41:00.000Z",
+          "text": "提交订单"
+        },
+        {
+          "time": "2026-10-30T07:46:00.000Z",
+          "text": "支付成功（微信支付）"
+        },
+        {
+          "time": "2026-10-30T09:41:00.000Z",
+          "text": "操作员已接单，表演筹备中"
+        },
+        {
+          "time": "2026-11-07T19:00:00+08:00",
+          "text": "表演开始执行"
+        },
+        {
+          "time": "2026-11-07T19:40:00+08:00",
+          "text": "表演完成，现场照片已回传"
+        },
+        {
+          "time": "2026-11-08T01:34:33.863Z",
+          "text": "用户已评价"
+        }
+      ],
+      "createdAt": "2026-10-30T07:41:00.000Z",
+      "expireAt": "2026-10-30T07:56:00.000Z"
+    },
+    {
+      "id": "D20261117-0015",
+      "userId": "u1003",
+      "status": "REFUNDING",
+      "droneCount": 200,
+      "duration": 15,
+      "patternPreset": ["heart"],
+      "customText": "新品大卖",
+      "customLogo": "",
+      "addons": ["music"],
+      "occasion": "产品发布",
+      "performDate": "2026-11-27",
+      "timeSlot": "20:00-21:00",
+      "venue": {
+        "type": "preset",
+        "name": "未来科技城中央公园",
+        "address": "杭州市余杭区文一西路 998 号",
+        "lng": 119.998,
+        "lat": 30.279
+      },
+      "contact": {
+        "name": "张总",
+        "phone": "13988880032"
+      },
+      "priceDetail": [
+        {
+          "label": "200 架基础价（含 10 分钟）",
+          "amount": 28800
+        },
+        {
+          "label": "时长 15 分钟加价",
+          "amount": 6000
+        },
+        {
+          "label": "定制文字「新品大卖」",
+          "amount": 2000
+        },
+        {
+          "label": "专属音乐编曲",
+          "amount": 1000
+        }
+      ],
+      "totalAmount": 37800,
+      "payChannel": "WECHAT",
+      "payTradeNo": "WX20261117100015",
+      "paidAt": "2026-11-17T09:20:00.000Z",
+      "acceptedBy": "",
+      "acceptedAt": "",
+      "startedAt": "",
+      "completedAt": "",
+      "media": {
+        "photos": ["D20261117-0015-1", "D20261117-0015-2", "D20261117-0015-3", "D20261117-0015-4"],
+        "videos": []
+      },
+      "review": null,
+      "refund": {
+        "reason": "公司活动时间调整，需要改期",
+        "ratio": 1,
+        "applyAmount": 37800,
+        "status": "PENDING",
+        "prevStatus": "PENDING_ACCEPT",
+        "auditBy": "",
+        "auditNote": "",
+        "refundAmount": 0,
+        "refundNo": "",
+        "createdAt": "2026-11-19T01:34:33.863Z",
+        "auditedAt": ""
+      },
+      "cancelReason": "",
+      "timeline": [
+        {
+          "time": "2026-11-17T09:15:00.000Z",
+          "text": "提交订单"
+        },
+        {
+          "time": "2026-11-17T09:20:00.000Z",
+          "text": "支付成功（微信支付）"
+        },
+        {
+          "time": "2026-11-19T01:34:33.863Z",
+          "text": "用户申请退款：公司活动时间调整，需要改期"
+        }
+      ],
+      "createdAt": "2026-11-17T09:15:00.000Z",
+      "expireAt": "2026-11-17T09:30:00.000Z"
+    },
+    {
+      "id": "D20261113-0016",
+      "userId": "u1004",
+      "status": "REFUNDED",
+      "droneCount": 300,
+      "duration": 15,
+      "patternPreset": ["heart"],
+      "customText": "店庆狂欢",
+      "customLogo": "",
+      "addons": ["narration"],
+      "occasion": "店庆活动",
+      "performDate": "2026-11-22",
+      "timeSlot": "19:00-20:00",
+      "venue": {
+        "type": "preset",
+        "name": "西湖文化广场",
+        "address": "杭州市拱墅区环城北路 47 号",
+        "lng": 120.165,
+        "lat": 30.277
+      },
+      "contact": {
+        "name": "Ann",
+        "phone": "18633331115"
+      },
+      "priceDetail": [
+        {
+          "label": "300 架基础价（含 10 分钟）",
+          "amount": 38800
+        },
+        {
+          "label": "时长 15 分钟加价",
+          "amount": 6000
+        },
+        {
+          "label": "定制文字「店庆狂欢」",
+          "amount": 2000
+        },
+        {
+          "label": "现场旁白解说",
+          "amount": 2000
+        }
+      ],
+      "totalAmount": 48800,
+      "payChannel": "ALIPAY",
+      "payTradeNo": "ALI20261113100016",
+      "paidAt": "2026-11-13T02:37:00.000Z",
+      "acceptedBy": "operator",
+      "acceptedAt": "2026-11-13T04:32:00.000Z",
+      "startedAt": "",
+      "completedAt": "",
+      "media": {
+        "photos": ["D20261113-0016-1", "D20261113-0016-2", "D20261113-0016-3", "D20261113-0016-4"],
+        "videos": []
+      },
+      "review": null,
+      "refund": {
+        "reason": "场地审批未通过，无法举办",
+        "ratio": 0.9,
+        "applyAmount": 43920,
+        "status": "APPROVED",
+        "prevStatus": "ACCEPTED",
+        "auditBy": "admin",
+        "auditNote": "同意退款",
+        "refundAmount": 43920,
+        "refundNo": "R20261113-0016",
+        "createdAt": "2026-11-17T01:34:33.863Z",
+        "auditedAt": "2026-11-18T01:34:33.863Z"
+      },
+      "cancelReason": "",
+      "timeline": [
+        {
+          "time": "2026-11-13T02:32:00.000Z",
+          "text": "提交订单"
+        },
+        {
+          "time": "2026-11-13T02:37:00.000Z",
+          "text": "支付成功（支付宝）"
+        },
+        {
+          "time": "2026-11-17T01:34:33.863Z",
+          "text": "用户申请退款：场地审批未通过，无法举办"
+        },
+        {
+          "time": "2026-11-18T01:34:33.863Z",
+          "text": "退款审批通过，退款 ¥43920"
+        }
+      ],
+      "createdAt": "2026-11-13T02:32:00.000Z",
+      "expireAt": "2026-11-13T02:47:00.000Z"
+    },
+    {
+      "id": "D20261118-0018",
+      "userId": "u1006",
+      "status": "CANCELLED",
+      "droneCount": 100,
+      "duration": 10,
+      "patternPreset": ["heart"],
+      "customText": "",
+      "customLogo": "",
+      "addons": [],
+      "occasion": "表白",
+      "performDate": "2026-11-26",
+      "timeSlot": "20:00-21:00",
+      "venue": {
+        "type": "preset",
+        "name": "滨江世纪广场",
+        "address": "杭州市滨江区江南大道 100 号",
+        "lng": 120.212,
+        "lat": 30.208
+      },
+      "contact": {
+        "name": "糖糖",
+        "phone": "15911118880"
+      },
+      "priceDetail": [
+        {
+          "label": "100 架基础价（含 10 分钟）",
+          "amount": 18800
+        }
+      ],
+      "totalAmount": 18800,
+      "payChannel": "ALIPAY",
+      "payTradeNo": "ALI20261118100018",
+      "paidAt": "2026-11-18T04:11:00.000Z",
+      "acceptedBy": "",
+      "acceptedAt": "",
+      "startedAt": "",
+      "completedAt": "",
+      "media": {
+        "photos": ["D20261118-0018-1", "D20261118-0018-2", "D20261118-0018-3", "D20261118-0018-4"],
+        "videos": []
+      },
+      "review": null,
+      "refund": null,
+      "cancelReason": "用户主动取消",
+      "timeline": [
+        {
+          "time": "2026-11-18T04:06:00.000Z",
+          "text": "提交订单"
+        },
+        {
+          "time": "2026-11-18T04:11:00.000Z",
+          "text": "支付成功（支付宝）"
+        },
+        {
+          "time": "2026-11-19T01:34:33.863Z",
+          "text": "订单取消（用户主动取消）"
+        }
+      ],
+      "createdAt": "2026-11-18T04:06:00.000Z",
+      "expireAt": "2026-11-18T04:21:00.000Z"
+    }
+  ],
+  "consults": [
+    {
+      "id": "C20261118-0001",
+      "userId": "u1001",
+      "status": "PENDING",
+      "statusText": "待客服接待",
+      "submittedAt": "2026-11-18T01:34:33.863Z",
+      "updatedAt": "2026-11-18T01:34:33.863Z",
+      "note": "现场有 10kV 架空线，已联系物业确认",
+      "need": {
+        "droneCount": 200,
+        "duration": 10,
+        "contentMode": "template",
+        "screens": "mid",
+        "dimension": "2D",
+        "motion": "static",
+        "matrix": 1,
+        "addons": [],
+        "audience": 600
+      },
+      "venue": {
+        "id": "v1",
+        "name": "滨江世纪广场",
+        "type": "preset",
+        "address": "杭州市滨江区江南大道 100 号",
+        "lng": 120.212,
+        "lat": 30.208
+      },
+      "judgment": {
+        "conclusion": "SURVEY",
+        "conclusionText": "无实测数据，需实地勘察（判定结论以现场勘察为准）",
+        "checks": []
+      },
+      "performDate": "2026-11-24",
+      "timeSlot": "20:00-21:00",
+      "reasons": [
+        {
+          "key": "SURVEY",
+          "label": "无实测数据，需实地勘察",
+          "why": "判定结论以现场勘察为准，勘察前不能出正式报价"
+        }
+      ],
+      "quote": {
+        "total": 38000,
+        "lo": 34200,
+        "hi": 43700,
+        "fee": {
+          "payable": 0,
+          "factors": [],
+          "waived": {
+            "condition": "",
+            "effect": ""
+          }
+        }
+      },
+      "dispatch": null,
+      "supersede": null,
+      "reject": null,
+      "timeline": [
+        {
+          "at": "2026-11-18T01:34:33.863Z",
+          "by": "用户",
+          "text": "提交咨询单，等待客服接待"
+        }
+      ]
+    },
+    {
+      "id": "C20261117-0002",
+      "userId": "u1004",
+      "status": "RECEIVED",
+      "statusText": "客服已接待·拟方案",
+      "submittedAt": "2026-11-17T01:34:33.863Z",
+      "updatedAt": "2026-11-17T02:19:33.863Z",
+      "note": "",
+      "need": {
+        "droneCount": 300,
+        "duration": 10,
+        "contentMode": "template",
+        "screens": "mid",
+        "dimension": "2D",
+        "motion": "static",
+        "matrix": 1,
+        "addons": [],
+        "audience": 900
+      },
+      "venue": {
+        "id": "v2",
+        "name": "奥体中心体育场",
+        "type": "preset",
+        "address": "杭州市萧山区博奥路 588 号",
+        "lng": 120.235,
+        "lat": 30.231
+      },
+      "judgment": {
+        "conclusion": "FIRST_EVAL",
+        "conclusionText": "初次活动，须做官方可行性评估",
+        "checks": []
+      },
+      "performDate": "2026-11-25",
+      "timeSlot": "19:00-20:00",
+      "reasons": [
+        {
+          "key": "FIRST_EVAL",
+          "label": "官方可行性评估未做过",
+          "why": "初次活动前须由公安机关会同空管、气象、无线电管理等部门评估"
+        }
+      ],
+      "quote": {
+        "total": 52000,
+        "lo": 46800,
+        "hi": 59800,
+        "fee": {
+          "payable": 0,
+          "factors": [],
+          "waived": {
+            "condition": "",
+            "effect": ""
+          }
+        }
+      },
+      "dispatch": null,
+      "supersede": null,
+      "reject": null,
+      "timeline": [
+        {
+          "at": "2026-11-17T01:34:33.863Z",
+          "by": "用户",
+          "text": "提交咨询单，等待客服接待"
+        },
+        {
+          "at": "2026-11-17T02:19:33.863Z",
+          "by": "调度操作员",
+          "text": "客服已接待，正在拟定方案与报价区间"
+        }
+      ],
+      "receivedBy": "调度操作员",
+      "receivedAt": "2026-11-17T02:19:33.863Z"
+    },
+    {
+      "id": "C20261116-0003",
+      "userId": "u1006",
+      "status": "DISPATCHED",
+      "statusText": "已派单·待你确认",
+      "submittedAt": "2026-11-16T01:34:33.863Z",
+      "updatedAt": "2026-11-16T05:34:33.863Z",
+      "note": "",
+      "need": {
+        "droneCount": 400,
+        "duration": 10,
+        "contentMode": "template",
+        "screens": "mid",
+        "dimension": "2D",
+        "motion": "static",
+        "matrix": 1,
+        "addons": [],
+        "audience": 1200
+      },
+      "venue": {
+        "id": "v3",
+        "name": "西湖文化广场",
+        "type": "preset",
+        "address": "杭州市拱墅区环城北路 47 号",
+        "lng": 120.165,
+        "lat": 30.277
+      },
+      "judgment": {
+        "conclusion": "CROWD",
+        "conclusionText": "1000 人以上，须办大型群众性活动安全许可",
+        "checks": []
+      },
+      "performDate": "2026-11-23",
+      "timeSlot": "21:00-22:00",
+      "reasons": [
+        {
+          "key": "CROWD",
+          "label": "1000 人以上大型群众性活动",
+          "why": "需安全许可证，承办者应在活动日 20 日前向公安机关申请"
+        }
+      ],
+      "quote": {
+        "total": 68000,
+        "lo": 61200,
+        "hi": 78200,
+        "fee": {
+          "payable": 0,
+          "factors": [],
+          "waived": {
+            "condition": "",
+            "effect": ""
+          }
+        }
+      },
+      "dispatch": {
+        "id": "D20261116-1002",
+        "createdBy": "调度操作员",
+        "createdAt": "2026-11-16T05:34:33.863Z",
+        "status": "PENDING_CONFIRM",
+        "confirmedAt": "",
+        "confirmedBy": "",
+        "quoteRange": [64600, 74800],
+        "terms": {
+          "approvalOwner": "承飞方（乙方）负责空域申请与备案",
+          "approvalFailLiability": "明确约定：乙方未按时取得批复 → 乙方全责退还已付费用",
+          "subcontractApproved": "是（甲方书面同意）",
+          "depositNature": "预付款（未约定定金条款，不适用定金罚则）",
+          "insuranceAmount": 1000000,
+          "scaleBasis": "投入规模（实际投入的机队数）；同时升空峰值由编舞决定，不作为计价与验收口径"
+        },
+        "mustFill": [
+          {
+            "key": "approvalOwner",
+            "label": "审批义务承担主体",
+            "value": "承飞方（乙方）负责空域申请与备案",
+            "required": true,
+            "note": ""
+          },
+          {
+            "key": "approvalFailLiability",
+            "label": "审批失败责任划分",
+            "value": "明确约定：乙方未按时取得批复 → 乙方全责退还已付费用",
+            "required": true,
+            "note": "约定不明 → 双方共同承担、互不支付违约金或赔偿利息（(2025)鄂01民终396号）"
+          },
+          {
+            "key": "subcontractApproved",
+            "label": "转包是否经甲方书面同意",
+            "value": "是（甲方书面同意）",
+            "required": true,
+            "note": "未经书面同意的转包费用可能不被认定为共同履约成本"
+          },
+          {
+            "key": "depositNature",
+            "label": "签约节点是定金还是预付款",
+            "value": "预付款（未约定定金条款，不适用定金罚则）",
+            "required": true,
+            "note": "未明确约定「定金」条款，解除时只能退还未履行部分，无法适用定金罚则（民法典第五百八十七条）"
+          },
+          {
+            "key": "insuranceAmount",
+            "label": "责任保险保额",
+            "value": 1000000,
+            "required": true,
+            "note": "行业实操要求不低于 100 万元"
+          },
+          {
+            "key": "scaleBasis",
+            "label": "计价与验收按投入规模还是峰值",
+            "value": "投入规模（实际投入的机队数）；同时升空峰值由编舞决定，不作为计价与验收口径",
+            "required": true,
+            "note": "派单只写投入规模（实际投入的机队数）；同时升空峰值由编舞决定，不作为计价与验收口径"
+          }
+        ],
+        "note": "按 400 架 + 10 分钟定制文字排期，含现场勘察一次"
+      },
+      "supersede": null,
+      "reject": null,
+      "timeline": [
+        {
+          "at": "2026-11-16T01:34:33.863Z",
+          "by": "用户",
+          "text": "提交咨询单，等待客服接待"
+        },
+        {
+          "at": "2026-11-16T02:19:33.863Z",
+          "by": "调度操作员",
+          "text": "客服已接待，正在拟定方案与报价区间"
+        },
+        {
+          "at": "2026-11-16T05:34:33.863Z",
+          "by": "调度操作员",
+          "text": "客服已创建派单 D20261116-1002，报价区间 ¥64,600 - ¥74,800，等待用户确认"
+        }
+      ],
+      "receivedBy": "调度操作员",
+      "receivedAt": "2026-11-16T02:19:33.863Z"
+    }
+  ],
+  "contracts": [
+    {
+      "id": "c1",
+      "contractNo": "HT20261118-0001",
+      "orderId": "D20261118-0001",
+      "templateCode": "STANDARD_PERFORMANCE",
+      "templateVersion": "v1.0",
+      "partyAName": "李先生",
+      "partyAIdType": "ID_CARD",
+      "partyAIdNo": "3301081998801****",
+      "partyAContact": "李先生",
+      "partyAPhone": "13866668801",
+      "partyBName": "杭州承飞科技有限公司",
+      "partyBCreditCode": "91330108MA2H7XK51P",
+      "totalAmount": 50800,
+      "paymentTerms": "签约付 50% 预付款，演出前 7 天付清尾款（里程碑分期，客户主动付款，不做自动代扣）",
+      "signStatus": "VOID",
+      "esignFlowId": "",
+      "sealId": "",
+      "signedPdfUrl": "",
+      "partyASignedAt": null,
+      "partyBSignedAt": null,
+      "signedAt": null,
+      "voidReason": "客户资料待补充，合同暂缓签署，运营作废后重新拟定",
+      "terminateReason": "",
+      "terminateResponsibility": "",
+      "terminatedAt": null,
+      "refundNo": "",
+      "rescheduleReason": "",
+      "rescheduleResponsibility": "",
+      "originalPerformDate": null,
+      "rescheduledPerformDate": null,
+      "rescheduledAt": null,
+      "createdAt": "2026-11-18T03:17:00.000Z",
+      "updatedAt": "2026-11-19T03:17:00.000Z",
+      "order": {
+        "orderNo": "D20261118-0001",
+        "status": "PENDING_ACCEPT",
+        "userId": "u1001",
+        "droneCount": 300,
+        "duration": 15,
+        "performDate": "2026-11-28",
+        "timeSlot": "20:00-21:00",
+        "venueName": "滨江世纪广场"
+      },
+      "schedules": [
+        {
+          "id": "c1-s1",
+          "installmentNo": 1,
+          "stageName": "预付款",
+          "triggerEvent": "合同签署完成",
+          "dueDate": "2026-11-18",
+          "ratio": 0.5,
+          "planAmount": 25400,
+          "paidAmount": 0,
+          "status": "PENDING",
+          "paidAt": null
+        },
+        {
+          "id": "c1-s2",
+          "installmentNo": 2,
+          "stageName": "尾款",
+          "triggerEvent": "演出前7天",
+          "dueDate": "2026-11-21",
+          "ratio": 0.5,
+          "planAmount": 25400,
+          "paidAmount": 0,
+          "status": "PENDING",
+          "paidAt": null
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "contractNo": "HT20261118-0002",
+      "orderId": "D20261118-0002",
+      "templateCode": "STANDARD_PERFORMANCE",
+      "templateVersion": "v1.0",
+      "partyAName": "甜甜",
+      "partyAIdType": "ID_CARD",
+      "partyAIdNo": "3301081999909****",
+      "partyAContact": "甜甜",
+      "partyAPhone": "13722229909",
+      "partyBName": "杭州承飞科技有限公司",
+      "partyBCreditCode": "91330108MA2H7XK51P",
+      "totalAmount": 18800,
+      "paymentTerms": "签约付 50% 预付款，演出前 7 天付清尾款（里程碑分期，客户主动付款，不做自动代扣）",
+      "signStatus": "SIGNED",
+      "esignFlowId": "",
+      "sealId": "",
+      "signedPdfUrl": "/api/media/contract/HT20261118-0002.pdf",
+      "partyASignedAt": "2026-11-18T04:39:00.000Z",
+      "partyBSignedAt": "2026-11-18T04:39:00.000Z",
+      "signedAt": "2026-11-18T04:39:00.000Z",
+      "voidReason": "",
+      "terminateReason": "",
+      "terminateResponsibility": "",
+      "terminatedAt": null,
+      "refundNo": "",
+      "rescheduleReason": "",
+      "rescheduleResponsibility": "",
+      "originalPerformDate": null,
+      "rescheduledPerformDate": null,
+      "rescheduledAt": null,
+      "createdAt": "2026-11-18T04:34:00.000Z",
+      "updatedAt": "2026-11-18T04:34:00.000Z",
+      "order": {
+        "orderNo": "D20261118-0002",
+        "status": "PENDING_ACCEPT",
+        "userId": "u1002",
+        "droneCount": 100,
+        "duration": 10,
+        "performDate": "2026-11-24",
+        "timeSlot": "19:00-20:00",
+        "venueName": "幸福里小区中心广场"
+      },
+      "schedules": [
+        {
+          "id": "c2-s1",
+          "installmentNo": 1,
+          "stageName": "预付款",
+          "triggerEvent": "合同签署完成",
+          "dueDate": "2026-11-18",
+          "ratio": 0.5,
+          "planAmount": 9400,
+          "paidAmount": 9400,
+          "status": "PAID",
+          "paidAt": "2026-11-18T04:39:00.000Z"
+        },
+        {
+          "id": "c2-s2",
+          "installmentNo": 2,
+          "stageName": "尾款",
+          "triggerEvent": "演出前7天",
+          "dueDate": "2026-11-17",
+          "ratio": 0.5,
+          "planAmount": 9400,
+          "paidAmount": 9400,
+          "status": "PAID",
+          "paidAt": "2026-11-18T04:39:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "contractNo": "HT20261117-0003",
+      "orderId": "D20261117-0003",
+      "templateCode": "STANDARD_PERFORMANCE",
+      "templateVersion": "v1.0",
+      "partyAName": "张总",
+      "partyAIdType": "ID_CARD",
+      "partyAIdNo": "3301081990032****",
+      "partyAContact": "张总",
+      "partyAPhone": "13988880032",
+      "partyBName": "杭州承飞科技有限公司",
+      "partyBCreditCode": "91330108MA2H7XK51P",
+      "totalAmount": 83800,
+      "paymentTerms": "签约付 50% 预付款，演出前 7 天付清尾款（里程碑分期，客户主动付款，不做自动代扣）",
+      "signStatus": "PENDING_SIGN",
+      "esignFlowId": "",
+      "sealId": "",
+      "signedPdfUrl": "",
+      "partyASignedAt": null,
+      "partyBSignedAt": null,
+      "signedAt": null,
+      "voidReason": "",
+      "terminateReason": "",
+      "terminateResponsibility": "",
+      "terminatedAt": null,
+      "refundNo": "",
+      "rescheduleReason": "",
+      "rescheduleResponsibility": "",
+      "originalPerformDate": null,
+      "rescheduledPerformDate": null,
+      "rescheduledAt": null,
+      "createdAt": "2026-11-17T05:51:00.000Z",
+      "updatedAt": "2026-11-17T05:51:00.000Z",
+      "order": {
+        "orderNo": "D20261117-0003",
+        "status": "PENDING_ACCEPT",
+        "userId": "u1003",
+        "droneCount": 500,
+        "duration": 20,
+        "performDate": "2026-12-04",
+        "timeSlot": "20:00-21:00",
+        "venueName": "奥体中心体育场"
+      },
+      "schedules": [
+        {
+          "id": "c3-s1",
+          "installmentNo": 1,
+          "stageName": "预付款",
+          "triggerEvent": "合同签署完成",
+          "dueDate": "2026-11-17",
+          "ratio": 0.5,
+          "planAmount": 41900,
+          "paidAmount": 0,
+          "status": "PENDING",
+          "paidAt": null
+        },
+        {
+          "id": "c3-s2",
+          "installmentNo": 2,
+          "stageName": "尾款",
+          "triggerEvent": "演出前7天",
+          "dueDate": "2026-11-27",
+          "ratio": 0.5,
+          "planAmount": 41900,
+          "paidAmount": 0,
+          "status": "PENDING",
+          "paidAt": null
+        }
+      ]
+    }
+  ]
+}
