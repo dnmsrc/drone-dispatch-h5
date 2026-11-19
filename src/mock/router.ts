@@ -380,6 +380,25 @@ route('POST', '/auth/logout', () => {
 })
 
 // ---- 订单 ----
+
+/**
+ * 静态阶段专用的续期：种子里的待支付单的 expireAt 是写入数据那一刻的「现在 + 15 分钟」，
+ * 隔天再看就过期了，收银台会直接弹「订单已超时取消」并跳详情，演示链路等于断掉。
+ * 这里在读取时把已经过期的待支付单续到「现在 + 15 分钟」，保证「去支付 → 收银台倒计时 → 支付成功」始终可演示。
+ * 正式接后端后，过期时间由服务端下单接口决定，这段逻辑随 Mock 一起删掉。
+ */
+const PAY_WINDOW_MS = 15 * 60 * 1000
+
+function freshenPendingPay(o: Json): Json {
+  if (o.status === 'PENDING_PAY') {
+    const t = o.expireAt ? new Date(o.expireAt).getTime() : NaN
+    if (!Number.isFinite(t) || t <= Date.now()) {
+      o.expireAt = new Date(Date.now() + PAY_WINDOW_MS).toISOString()
+    }
+  }
+  return o
+}
+
 route('GET', '/orders', ({ query }) => {
   const s = authUser()
   let list = db.orders.filter((o) => o.userId === s.id || o.userId === 'u1001')
@@ -389,7 +408,10 @@ route('GET', '/orders', ({ query }) => {
   }
   list.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
   return ok({
-    list: list.map((o) => ({ ...publicOrder(o), statusText: orderStatusText(o.status) })),
+    list: list.map((o) => ({
+      ...publicOrder(freshenPendingPay(o)),
+      statusText: orderStatusText(o.status),
+    })),
   })
 })
 
@@ -397,7 +419,9 @@ route('GET', '/orders/:id', ({ params }) => {
   authUser()
   const o = db.orders.find((x) => x.id === params.id)
   if (!o) fail('订单不存在', 40400)
-  return ok({ order: { ...publicOrder(o), statusText: orderStatusText(o.status) } })
+  return ok({
+    order: { ...publicOrder(freshenPendingPay(o)), statusText: orderStatusText(o.status) },
+  })
 })
 
 route('POST', '/orders', ({ body }) => {
