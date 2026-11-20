@@ -15,19 +15,23 @@
 - **接后端时**：只改 `src/utils/request.ts` 的 transport 与 `src/config/env.ts` 的 `VITE_API_BASE`，页面与 store 不用动。
 - 原型专有的评审辅助浮层（`proto-tip.js`）按约定不迁入，这是与原型唯一的预期视觉差异。
 
-## 登录（微信授权 / 手机号双通道）
+## 登录（微信静默登录 / 手机号验证码；个人资料单独授权）
 
-入口只有一个：**用二维码打开 H5**（微信内、普通浏览器都能打开页面，可匿名浏览）。需要登录时按环境自动选通道：
+入口只有一个：**扫码打开 H5，落在首页**。扫码第一屏不做任何登录，匿名可浏览全部内容；只有点到「立即预约」「我的」「订单」这类需要身份的动作时才登录，且按环境自动选通道：
 
-- **微信内**：优先微信网页授权，用户点「允许」即自动登录并回到刚才那页；也可切「使用手机号登录」；
-- **微信外**（网页授权在微信外无法发起）：直接用**手机号 + 验证码**登录。
+- **微信内**：`snsapi_base` **静默授权**（不弹授权页、不问昵称头像），跳一圈回来就登录好并回到刚才那页；
+- **微信外**（网页授权在浏览器里发起不了）：直接进**手机号 + 验证码**登录页。
 
-- 登录编排集中在 `src/services/auth.ts`（`beginLogin` / `requireLogin` / `resumeFromCallback` / `logout`，手机号通道 `sendSmsCode` / `loginWithSms`），页面不自己拼跳转；微信环境判断与授权 URL 在 `src/utils/wechat.ts`。
-- 两种模式（`VITE_WX_AUTH_MODE`）：`mock`＝本地模拟授权（无需公众号资质，开发/演示/自动化默认）；`real`＝真实跳转微信授权页（需已认证服务号 AppID + 公众平台「网页授权域名」，未配 AppID 会自动降级 mock）。
+**登录 ≠ 拿资料**：登录只换 openid。昵称头像由用户自己在「我的 → 微信资料」里点一下，
+走 `snsapi_userinfo`（这一档才会真弹「是否允许获取昵称头像」），拿到后 `patchUser` 回填、不动 token。
+
+- 编排集中在 `src/services/auth.ts`（`beginLogin` / `requireLogin` / `beginProfileAuth` / `resumeFromCallback` / `logout`，手机号通道 `sendSmsCode` / `loginWithSms`），页面不自己拼跳转；微信环境判断与授权 URL 在 `src/utils/wechat.ts`。
+- 一次授权往返只干一件事：回跳按 `wx_oauth_intent` 分派（`login` 换 token / `profile` 只回填资料）。
+- 两种模式（`VITE_WX_AUTH_MODE`）：`mock`＝本地模拟（微信内模拟静默登录，无需公众号资质；开发/演示/自动化默认）；`real`＝真实跳转微信授权（需 AppID + 公众平台「网页授权域名」，未配 AppID 自动降级 mock）。
 - 页面加载兜底会先弹确认再跳授权：微信会把「无用户交互的自动跳转」固化成快照页（只显示「点击访问完整网页」），所以深链进受保护页时不能直接跳。
 - 手机号验证码：60s 重发倒计时；Mock 环境验证码固定 `123456`（发码后由接口返回的 `demoCode` 决定是否提示）。
-- 真实环境的资质、后端接口契约、部署与排错清单见 [docs/微信登录接入说明.md](docs/微信登录接入说明.md)。
-- 自动化：`node ../.shots-tmp/h5-login-e2e.mjs`（mock 全流程含手机号通道，24 断言）、`node ../.shots-tmp/h5-login-real-e2e.mjs`（real 协议链路，21 断言）。
+- 真实环境的资质、后端接口契约（`/auth/wechat-login`、`/user/wechat-profile`、短信两条）、部署与排错清单见 [docs/微信登录接入说明.md](docs/微信登录接入说明.md)。
+- 自动化：`node ../.shots-tmp/h5-login-e2e.mjs`（mock 全流程含静默登录与资料授权，26 断言）、`node ../.shots-tmp/h5-login-real-e2e.mjs`（real 协议链路，21 断言）。
 
 ## 技术栈
 
