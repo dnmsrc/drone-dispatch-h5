@@ -80,6 +80,25 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
 }
 
+/**
+ * 账号行可能已被合并（比如另一台设备上把「微信这个号」并进了「手机号那个号」）：
+ * 顺着 mergedInto 追到当前的主账号，而不是拿一个已经不存在的 id 继续查。
+ * 入参可能是前端存下来的 publicUser（不含 mergedInto），所以先按 id 回账号表取「真身」，
+ * 只有账号表里也找不到（数据被重置 / 真被删了）才返回 null。
+ */
+function liveAccount(u: Json | null): Json | null {
+  if (!u || !u.id) return null
+  const seen = new Set<string>()
+  let id = String(u.id)
+  for (;;) {
+    const row = db.users.find((x) => x && x.id === id) || null
+    if (!row) return null
+    if (!row.mergedInto || seen.has(id)) return row
+    seen.add(id)
+    id = String(row.mergedInto)
+  }
+}
+
 /** 已登录用户：内存优先，storage 兜底（刷新后 token 还在，但内存里的用户名丢了） */
 function currentUser(): Json | null {
   if (db.user) return db.user
@@ -92,7 +111,26 @@ function currentUser(): Json | null {
     /* ignore */
   }
   if (!token || !user) return null
-  db.user = user
+  // storage 里的登录用户可能是合并前的旧身份（另一端刚把两个账号并了）：
+  // 追不到主账号就当未登录处理，而不是带着一个查不到订单的 id 继续跑
+  const live = liveAccount(user)
+  if (!live) {
+    try {
+      uni.removeStorageSync('token')
+      uni.removeStorageSync('user')
+    } catch {
+      /* ignore */
+    }
+    return null
+  }
+  if (live !== user) {
+    try {
+      uni.setStorageSync('user', { type: 'object', data: publicUser(live) })
+    } catch {
+      /* ignore */
+    }
+  }
+  db.user = live
   return db.user
 }
 
@@ -418,12 +456,13 @@ function saveUsers(): void {
 
 function byOpenid(openid: string): Json | null {
   if (!openid) return null
-  return db.users.find((x) => x && x.openid === openid) || null
+  // 命中的可能是已被并掉的影子账号：身份位还留在它身上，但账号本身要追到主账号
+  return liveAccount(db.users.find((x) => x && x.openid === openid) || null)
 }
 
 function byPhone(phone: string): Json | null {
   if (!phone) return null
-  return db.users.find((x) => x && x.phone === phone) || null
+  return liveAccount(db.users.find((x) => x && x.phone === phone) || null)
 }
 
 /** 新建账号骨架（调用方补身份位与昵称头像） */
@@ -554,12 +593,15 @@ function isPlaceholderName(n: string): boolean {
 }
 
 /**
- * 两个账号其实是同一个人 → 并成一个：保留先存在的旧账号（有历史），
- * 把当前账号的身份位与资料搬过去，删掉当前空壳。
+ * 两个账号其实是同一个人 → 并成一个：保留 target（身份原来就挂着的账号，通常历史更多），
+ * 把 source 的身份位、资料**和它名下的业务数据**搬过去，再把 source 留成影子账号。
  * 依据是验证码 / 微信授权都是他本人刚完成的，否则他拿不到这个身份。
+ *
+ * 不能只删 source 行：订单 / 咨询按 userId 外键挂在账号上，删行会让那一边下过的单
+ * 变成「库里有、我的订单里没有」的孤儿单 —— 用户看到的就是「我那一单不见了」。
  */
-function mergeAccounts(target: Json, source: Json): Json {
-  if (target === source) return target
+function mergeAccounts(target: Json, source: Json): { user: Json; movedOrders: number } {
+  if (target === source) return { user: target, movedOrders: 0 }
   for (const f of ['openid', 'phone']) {
     if (!target[f] && source[f]) target[f] = source[f]
   }
@@ -570,8 +612,23 @@ function mergeAccounts(target: Json, source: Json): Json {
   if (isPlaceholderName(String(target.nickname)) && !isPlaceholderName(String(source.nickname))) {
     target.nickname = source.nickname
   }
-  db.users = db.users.filter((u) => u && u.id !== source.id)
-  return target
+  // 订单 / 咨询都按 userId 挂在账号上：只删账号行不搬数据，被并掉那一边下过的单
+  // 就变成「库里有、我的订单里没有」的孤儿单。合并不等于丢弃，先改挂到保留账号。
+  let movedOrders = 0
+  for (const o of db.orders) {
+    if (o.userId === source.id) {
+      o.userId = target.id
+      movedOrders++
+    }
+  }
+  for (const c of db.consults) {
+    if (c.userId === source.id) c.userId = target.id
+  }
+  // 被并掉的一方不物理删除，留成「影子账号」：订单审计要能追到它，
+  // 另一端还拿着旧身份的会话也能顺着 mergedInto 找回主账号（而不是突然掉线）。
+  source.mergedInto = target.id
+  source.mergedAt = nowIso()
+  return { user: target, movedOrders }
 }
 
 route('POST', '/user/bind-phone', ({ body }) => {
@@ -591,9 +648,12 @@ route('POST', '/user/bind-phone', ({ body }) => {
 
   let u = cur
   let merged = false
+  let movedOrders = 0
   const owner = byPhone(phone)
   if (owner && owner.id !== cur.id) {
-    u = mergeAccounts(owner, cur)
+    const r = mergeAccounts(owner, cur)
+    u = r.user
+    movedOrders = r.movedOrders
     merged = true
   } else {
     u.phone = phone
@@ -601,8 +661,8 @@ route('POST', '/user/bind-phone', ({ body }) => {
   saveUsers()
   db.user = u
   return ok(
-    { user: publicUser(u), merged },
-    merged ? '该手机号已有账号，已合并到它' : '已绑定手机号',
+    { user: publicUser(u), merged, movedOrders },
+    merged ? '该手机号已有账号，已合并到它（' + movedOrders + ' 笔订单已转入）' : '已绑定手机号',
   )
 })
 
@@ -617,16 +677,22 @@ route('POST', '/user/bind-wechat', ({ body }) => {
 
   let u = cur
   let merged = false
+  let movedOrders = 0
   const owner = byOpenid(openid)
   if (owner && owner.id !== cur.id) {
-    u = mergeAccounts(owner, cur)
+    const r = mergeAccounts(owner, cur)
+    u = r.user
+    movedOrders = r.movedOrders
     merged = true
   } else {
     u.openid = openid
   }
   saveUsers()
   db.user = u
-  return ok({ user: publicUser(u), merged }, merged ? '该微信已有账号，已合并到它' : '已绑定微信')
+  return ok(
+    { user: publicUser(u), merged, movedOrders },
+    merged ? '该微信已有账号，已合并到它（' + movedOrders + ' 笔订单已转入）' : '已绑定微信',
+  )
 })
 
 // ---- 订单 ----

@@ -358,6 +358,12 @@ export interface BindResp {
   user: WxUserInfo
   /** 这次绑定把两个账号并成了一个（对方账号本来就已经存在） */
   merged?: boolean
+  /**
+   * 合并时从当前账号改挂到保留账号的订单数。
+   * 两个「半个账号」各下过单是常态（微信里下过、浏览器里又下过），合并后这些单
+   * 必须都归到同一个账号上，否则用户会觉得「我那一单不见了」。
+   */
+  movedOrders?: number
 }
 
 /**
@@ -369,7 +375,13 @@ function applyBind(d: BindResp): void {
     setLogin(store.token, d.user)
     rememberIdentity(d.user)
   }
-  uni.showToast({ title: d && d.merged ? '已合并到你之前的账号' : '已绑定', icon: 'success' })
+  const moved = (d && d.movedOrders) || 0
+  const title = !(d && d.merged)
+    ? '已绑定'
+    : moved > 0
+      ? '已合并，' + moved + ' 笔订单已转入'
+      : '已合并到你之前的账号'
+  uni.showToast({ title, icon: 'success', duration: 2200 })
 }
 
 /**
