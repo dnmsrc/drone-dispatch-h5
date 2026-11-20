@@ -81,7 +81,7 @@ export function canRealLogin(): boolean {
   return loginMode() === 'real' && wx.isWeixin()
 }
 
-/** 把「一次性 state + 意图 + 登录后回哪」暂存到 sessionStorage（state 只能放 [a-zA-Z0-9]，回跳目标不能进 state） */
+/** 把「一次性 state + 意图 + 登录后回哪」暂存到 sessionStorage（地址栏参数丢了时的兜底） */
 function stashAuth(redirect: string, intent: AuthIntent = 'login'): string {
   const state = wx.randomState()
   const s = ss()
@@ -95,6 +95,17 @@ function stashAuth(redirect: string, intent: AuthIntent = 'login'): string {
     }
   }
   return state
+}
+
+/**
+ * 回调地址上直接带 intent / back。
+ * 微信授权是一次跨域往返，回来时页面可能被重建，sessionStorage 有概率丢；
+ * 把「这次为什么授权、完了回哪」放进 URL 才不依赖存储。微信会在后面用 & 拼 code&state。
+ */
+function buildRedirectUri(intent: AuthIntent, back: string): string {
+  const base = wx.callbackBase(WX_REDIRECT_URI)
+  const sep = base.indexOf('?') >= 0 ? '&' : '?'
+  return base + sep + 'intent=' + intent + '&back=' + encodeURIComponent(back)
 }
 
 function clearAuthStash(): void {
@@ -141,7 +152,7 @@ async function runLogin(redirect?: string, opts: BeginLoginOptions = {}): Promis
     const state = stashAuth(back, 'login')
     const url = wx.buildAuthorizeUrl({
       appId: WX_APP_ID,
-      redirectUri: wx.callbackBase(WX_REDIRECT_URI),
+      redirectUri: buildRedirectUri('login', back),
       scope: WX_SCOPE,
       state,
     })
@@ -254,10 +265,11 @@ export async function beginProfileAuth(): Promise<void> {
   if (!(await askWxAuth('profile'))) return
 
   if (loginMode() === 'real' && wx.isWeixin()) {
-    const state = stashAuth(wx.currentRoute() || '/pages/user/index', 'profile')
+    const back = wx.currentRoute() || '/pages/user/index'
+    const state = stashAuth(back, 'profile')
     const url = wx.buildAuthorizeUrl({
       appId: WX_APP_ID,
-      redirectUri: wx.callbackBase(WX_REDIRECT_URI),
+      redirectUri: buildRedirectUri('profile', back),
       scope: PROFILE_SCOPE,
       state,
     })
@@ -305,16 +317,22 @@ export function resumeFromCallback(): void {
 
   const s = ss()
   const expected = (s && s.getItem(KEY_STATE)) || ''
-  const intent = ((s && s.getItem(KEY_INTENT)) || 'login') as AuthIntent
+  // 地址栏参数优先：微信是一次跨域往返，回来时页面可能被重建，sessionStorage 未必还在
+  const urlIntent = cb.intent === 'profile' ? 'profile' : cb.intent === 'login' ? 'login' : ''
+  const intent = (urlIntent || (s && s.getItem(KEY_INTENT)) || 'login') as AuthIntent
   const redirect =
+    cb.back ||
     (s && s.getItem(KEY_REDIRECT)) ||
     (intent === 'profile' ? '/pages/user/index' : '/pages/index/index')
   // 先清地址栏再发请求：无论成功失败，code 都不能留在 URL 里被二次使用
   wx.stripCallback()
   clearAuthStash()
 
-  // state 不匹配 = 不是本次会话发起的授权（或已被使用），拒绝换取，防 CSRF / 重放
-  if (!expected || cb.state !== expected) {
+  // state 不匹配 = 不是本次会话发起的授权（或已被使用），拒绝换取，防 CSRF / 重放。
+  // 只有「本地确实存过 state」时才比对：存储被微信清掉的极端情况下放行，
+  // 此时仍有一次性的 code + 后端校验兜底，比让用户卡在这儿重试强。
+  if (expected && cb.state !== expected) {
+    console.warn('[auth] state 不匹配，拒绝换取：', cb.state, '≠', expected)
     uni.showToast({ title: '授权校验失败，请重试', icon: 'none' })
     return
   }

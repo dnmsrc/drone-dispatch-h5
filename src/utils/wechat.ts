@@ -79,6 +79,10 @@ export function buildAuthorizeUrl(p: AuthorizeParams): string {
 export interface CallbackQuery {
   code: string
   state: string
+  /** 本次授权往返的目的（随 redirect_uri 一起带回来；sessionStorage 丢了也能分派） */
+  intent: string
+  /** 授权结束后回哪一页 */
+  back: string
 }
 
 /**
@@ -91,7 +95,12 @@ export function readCallback(): CallbackQuery | null {
   const parse = (raw: string) => {
     const s = raw.startsWith('?') ? raw.slice(1) : raw
     const q = new URLSearchParams(s)
-    return { code: q.get('code') || '', state: q.get('state') || '' }
+    return {
+      code: q.get('code') || '',
+      state: q.get('state') || '',
+      intent: q.get('intent') || '',
+      back: q.get('back') || '',
+    }
   }
   let got = parse(search)
   // hash 形如 #/pages/x?code=..&state=.. 时，从 '?' 后截取
@@ -106,7 +115,7 @@ export function stripCallback(): void {
   if (!isH5() || typeof history === 'undefined') return
   const url = new URL(window.location.href)
   let changed = false
-  ;['code', 'state'].forEach((k) => {
+  ;['code', 'state', 'intent', 'back'].forEach((k) => {
     if (url.searchParams.has(k)) {
       url.searchParams.delete(k)
       changed = true
