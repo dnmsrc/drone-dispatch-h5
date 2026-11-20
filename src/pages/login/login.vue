@@ -26,9 +26,7 @@
           </svg>
           <text>{{ loading ? '正在唤起微信授权…' : '微信授权登录' }}</text>
         </button>
-        <text v-if="realMode" class="hint"
-          >点击后跳转微信授权页，同意即自动登录，并回到刚才的页面</text
-        >
+        <text v-if="realMode" class="hint">点一下去微信授权，同意后自动回到这里</text>
 
         <!-- 模拟模式：没有公众号资质时用，演示「用户点允许 → 自动登录」的完整交互 -->
         <view v-else class="mock-card">
@@ -54,7 +52,7 @@
         </view>
 
         <view v-if="!realMode" class="alt" @click="view = 'sms'">
-          <text class="alt-text">演示用：使用手机号登录</text>
+          <text class="alt-text">演示：手机号登录</text>
         </view>
       </block>
 
@@ -64,24 +62,20 @@
            登录和下单都在手机微信中完成。这样账号天然只有一个（同一个 openid），
            不会出现「微信一个账号、浏览器手机号又一个账号」的双草稿。 -->
       <view v-else-if="view === 'qr'" class="qr-card">
-        <text class="qr-title">请用微信扫码登录</text>
-        <text class="qr-sub">
-          当前在浏览器中打开。微信登录只能在微信里完成，请用手机微信扫描下方二维码，
-          登录后继续预约。
-        </text>
+        <text class="qr-title">微信扫码登录</text>
+        <text class="qr-sub">浏览器里登不了微信，用手机扫这个码，登录后继续预约。</text>
         <view class="qr-box">
           <image v-if="qrUrl" class="qr-img" :src="qrUrl" mode="widthFix" />
           <view v-else class="qr-empty"><text>二维码生成中…</text></view>
         </view>
-        <text class="qr-tip">扫码后请在手机上完成登录</text>
         <view class="qr-actions">
           <button class="qr-link-btn" @click="copyScanLink">复制登录链接</button>
         </view>
         <text v-if="!realMode" class="qr-demo-note"
-          >演示环境：二维码指向本机地址，手机扫码通常打不开，可改用下方手机号登录演示</text
+          >本机地址，手机扫不开。改用下面的手机号登录。</text
         >
         <view v-if="!realMode" class="alt" @click="view = 'sms'">
-          <text class="alt-text">演示用：使用手机号登录</text>
+          <text class="alt-text">演示：手机号登录</text>
         </view>
       </view>
 
@@ -89,7 +83,7 @@
            「绕过微信、另建一个账号」的口子，双账号 / 双草稿就是这么来的 -->
       <view v-else class="sms-card">
         <text class="sms-title">手机号登录（演示）</text>
-        <text class="sms-sub">演示环境专用：正式环境请用微信扫码登录。</text>
+        <text class="sms-sub">正式环境没有这个入口。</text>
         <view class="field">
           <input
             v-model="phone"
