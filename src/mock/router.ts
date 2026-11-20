@@ -533,7 +533,7 @@ route('POST', '/user/wechat-profile', ({ body }) => {
   return ok({ nickname: u.nickname, avatar: u.avatar, openid: u.openid }, '已获取微信资料')
 })
 
-// ---- 手机号验证码登录（微信外兜底通道）----
+// ---- 手机号验证码登录（演示 / 本地联调通道；正式环境登录页不展示）----
 // 真实后端接短信服务商（阿里云/腾讯云）并向 users 表落 phone；Mock 用内存假码，
 // 响应形状与真实接口一致，前端代码切后端时不需要改。
 const smsCodes = new Map<string, string>()
