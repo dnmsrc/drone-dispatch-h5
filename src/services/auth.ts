@@ -1,10 +1,11 @@
 // H5 登录编排（唯一入口）。三段职责分得很清楚：
 //
 // ① 登录 = 只要「能认人」的标识（openid），不做任何打扰：
-//    微信内 → snsapi_base 静默授权（无授权弹窗，跳一圈回来就登好了，用户点「预约」时触发）；
+//    微信内 → 先弹自己的「微信授权确认」卡（用户点「允许」才继续）→ snsapi_base 静默授权
+//    （微信这一档本身无弹窗，跳一下中转页就回来，所以确认这一步由我们提供）；
 //    微信外 → 手机号 + 验证码（网页授权必须在微信内置浏览器里发起，浏览器里做不到）。
 // ② 个人信息（昵称 / 头像）≠ 登录：由用户在「我的」里主动点一下，
-//    走 snsapi_userinfo（这一档才会真弹「是否允许获取你的昵称、头像」），见 beginProfileAuth。
+//    同样先过确认卡，再走 snsapi_userinfo（这一档微信才会真弹「是否允许获取昵称头像」），见 beginProfileAuth。
 // ③ 回跳处理按 intent 分派：登录回跳换 token，资料回跳只更新资料，互不干扰。
 //
 // 分层约定：
@@ -18,6 +19,7 @@
 import { post, postSilent } from '@/utils/request'
 import { store, setLogin, patchUser, isLoggedIn, logout as clearSession } from '@/store'
 import { WX_APP_ID, WX_AUTH_MODE, WX_SCOPE, WX_REDIRECT_URI } from '@/config/env'
+import { askWxAuth } from '@/services/wxAuthSheet'
 import * as wx from '@/utils/wechat'
 
 export interface WxUserInfo {
@@ -107,21 +109,35 @@ function clearAuthStash(): void {
   }
 }
 
+export interface BeginLoginOptions {
+  /**
+   * 是否先弹我们自己的「微信授权确认」卡。默认 true —— 微信的 base 授权是静默的，
+   * 没有这一步用户点完「预约」只会看到页面闪一下，不知道发生了什么。
+   * 登录页本身就是登录 UI（用户已点了「微信登录」按钮）时传 false，避免叠两层确认。
+   */
+  confirm?: boolean
+}
+
 /**
  * 发起登录（唯一入口）。
- * 微信内走静默授权（snsapi_base）——不弹「是否允许」、不问昵称头像，用户点完「预约」就回来继续；
- * 微信外只能走手机号验证码（网页授权必须在微信内置浏览器里发起）。
- * @param redirect 登录成功后回到哪个页面，缺省用当前路由
- * @param opts.fromClick 是否由用户点击触发。微信会把「页面加载后无交互直接跳授权」固化成快照页，
- *        所以 true 才直接跳转，false（页面 onLoad 兜底）先弹一次确认再跳。
+ * 微信内：先弹授权确认卡，用户点「允许」才发起静默授权（snsapi_base，不索取昵称头像）；
+ * 微信外：直接进手机号验证码登录页（网页授权只能在微信内置浏览器发起）。
+ * @param redirect 登录成功后回到哪个页面，缺省用当前路由 —— 点「预约」授权的，
+ *        回来后仍在预约页，用户不用再点一次。
  */
-export function beginLogin(redirect?: string, opts: { fromClick?: boolean } = {}): void {
+export function beginLogin(redirect?: string, opts: BeginLoginOptions = {}): void {
+  void runLogin(redirect, opts)
+}
+
+async function runLogin(redirect?: string, opts: BeginLoginOptions = {}): Promise<void> {
   const back = redirect || wx.currentRoute() || '/pages/index/index'
-  // 默认按「用户点击触发」处理：绝大多数入口是点按钮/点卡片进来的
-  const fromClick = opts.fromClick !== false
+  const needConfirm = opts.confirm !== false
 
   // ① 微信内 + 真实模式：静默授权，只换 openid，不索取任何个人信息
   if (loginMode() === 'real' && wx.isWeixin()) {
+    // 确认卡的意义在这里：用户明确点了「允许」才跳转，也天然满足微信「必须有用户交互
+    // 才能跳授权」的规则（页面加载直接跳会被固化成快照页）
+    if (needConfirm && !(await askWxAuth('login'))) return
     const state = stashAuth(back, 'login')
     const url = wx.buildAuthorizeUrl({
       appId: WX_APP_ID,
@@ -129,27 +145,18 @@ export function beginLogin(redirect?: string, opts: { fromClick?: boolean } = {}
       scope: WX_SCOPE,
       state,
     })
-    const jump = () => {
-      if (wx.isH5()) window.location.replace(url)
+    if (wx.isH5()) {
+      // 卡片消失到微信中转页渲染之间有一小段空白，给一层「正在打开微信」，
+      // 让用户知道是自己在跳转，而不是按钮失灵（页面随即被 replace，遮罩不会残留在回跳页）
+      uni.showLoading({ title: '正在打开微信…', mask: true })
+      window.location.replace(url)
     }
-    if (fromClick) {
-      jump()
-      return
-    }
-    uni.showModal({
-      title: '需要登录',
-      content: '微信内会自动完成登录，确认后继续',
-      confirmText: '继续',
-      cancelText: '取消',
-      success: (r) => {
-        if (r.confirm) jump()
-      },
-    })
     return
   }
 
-  // ② 微信内 + mock 模式：模拟一次静默登录，也不经过登录页，保证演示与真实链路同构
+  // ② 微信内 + mock 模式：也先过同一张确认卡，再模拟一次静默登录，演示与真实链路同构
   if (loginMode() === 'mock' && wx.isWeixin()) {
+    if (needConfirm && !(await askWxAuth('login'))) return
     silentMockLogin(back)
     return
   }
@@ -175,9 +182,9 @@ function silentMockLogin(back: string): void {
 
 /**
  * 登录门：调用点统一用它。
- * 已登录返回 true（调用方继续）；未登录返回 false，并异步发起登录流程。
+ * 已登录返回 true（调用方继续）；未登录返回 false，并异步发起登录流程（先弹授权确认卡）。
  */
-export function requireLogin(redirect?: string, opts: { fromClick?: boolean } = {}): boolean {
+export function requireLogin(redirect?: string, opts: BeginLoginOptions = {}): boolean {
   if (isLoggedIn()) return true
   beginLogin(redirect, opts)
   return false
@@ -234,14 +241,17 @@ function applyProfile(d: WechatProfile): void {
 
 /**
  * 主动获取微信昵称头像（「我的」里由用户点一下触发）。
- * 只有这一档（snsapi_userinfo）才会真的弹「是否允许 获取你的昵称、头像」——登录从不弹。
+ * 先弹授权确认卡说明「要拿头像昵称」，同意后才走 snsapi_userinfo
+ * （这一档微信还会再弹一次它自己的「是否允许」——两道确认，因为这是个人信息）。
  * 必须已登录：资料要挂到当前账号上。
  */
-export function beginProfileAuth(): void {
+export async function beginProfileAuth(): Promise<void> {
   if (!isLoggedIn()) {
     uni.showToast({ title: '请先登录', icon: 'none' })
     return
   }
+
+  if (!(await askWxAuth('profile'))) return
 
   if (loginMode() === 'real' && wx.isWeixin()) {
     const state = stashAuth(wx.currentRoute() || '/pages/user/index', 'profile')

@@ -174,7 +174,8 @@ onLoad((opts) => {
 
 function startReal() {
   loading.value = true
-  beginLogin(redirect.value || '/pages/index/index', { fromClick: true })
+  // 登录页本身就是登录 UI（用户已经点了「微信登录」），不再叠自己的授权确认卡
+  beginLogin(redirect.value || '/pages/index/index', { confirm: false })
 }
 
 function allow() {

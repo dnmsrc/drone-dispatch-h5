@@ -207,6 +207,7 @@
       </view>
       <button class="pb-btn" @click="submit">下一步 · 确认订单</button>
     </view>
+    <WxAuthSheet />
   </view>
 </template>
 
@@ -216,6 +217,7 @@ import { computed, reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import NavBar from '@/components/NavBar.vue'
 import Calendar from '@/components/Calendar.vue'
+import WxAuthSheet from '@/components/WxAuthSheet.vue'
 import { get } from '@/utils/request'
 import { store, isLoggedIn } from '@/store'
 import { beginLogin } from '@/services/auth'

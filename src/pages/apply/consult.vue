@@ -184,6 +184,7 @@
       :must="pop.must"
       @close="pop.show = false"
     />
+    <WxAuthSheet />
   </view>
 </template>
 
@@ -194,6 +195,7 @@ import NavBar from '@/components/NavBar.vue'
 import StepBar from '@/components/StepBar.vue'
 import BasisPop from '@/components/BasisPop.vue'
 import SecHead from '@/components/SecHead.vue'
+import WxAuthSheet from '@/components/WxAuthSheet.vue'
 import {
   store,
   hydrateForPage,

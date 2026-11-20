@@ -106,6 +106,7 @@
         </view>
       </view>
     </view>
+    <WxAuthSheet />
   </view>
 </template>
 
@@ -116,6 +117,7 @@ import { onShow } from '@dcloudio/uni-app'
 import NightSky from '@/components/NightSky.vue'
 import DroneLogo from '@/components/DroneLogo.vue'
 import TabBar from '@/components/TabBar.vue'
+import WxAuthSheet from '@/components/WxAuthSheet.vue'
 import { get, getSilent } from '@/utils/request'
 import { store, newApply, isLoggedIn } from '@/store'
 import { requireLogin } from '@/services/auth'

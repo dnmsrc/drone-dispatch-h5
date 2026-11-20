@@ -70,6 +70,7 @@
         <button class="ab-btn" @click="showAbout = false">知道了</button>
       </view>
     </view>
+    <WxAuthSheet />
   </view>
 </template>
 
@@ -80,6 +81,7 @@ import { onShow } from '@dcloudio/uni-app'
 import NightSky from '@/components/NightSky.vue'
 import TabBar from '@/components/TabBar.vue'
 import DroneLogo from '@/components/DroneLogo.vue'
+import WxAuthSheet from '@/components/WxAuthSheet.vue'
 import { store, isLoggedIn } from '@/store'
 import { beginLogin, beginProfileAuth, logout } from '@/services/auth'
 import { getSilent } from '@/utils/request'

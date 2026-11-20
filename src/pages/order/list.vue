@@ -55,6 +55,7 @@
       <view style="height: 150rpx"></view>
     </scroll-view>
     <TabBar current="order" />
+    <WxAuthSheet />
   </view>
 </template>
 
@@ -66,6 +67,7 @@ import NavBar from '@/components/NavBar.vue'
 import TabBar from '@/components/TabBar.vue'
 import StatusTag from '@/components/StatusTag.vue'
 import Empty from '@/components/Empty.vue'
+import WxAuthSheet from '@/components/WxAuthSheet.vue'
 import { get, post } from '@/utils/request'
 import { isLoggedIn } from '@/store'
 import { beginLogin } from '@/services/auth'

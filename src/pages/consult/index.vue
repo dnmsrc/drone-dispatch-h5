@@ -91,6 +91,7 @@
 
       <view style="height: 60rpx"></view>
     </scroll-view>
+    <WxAuthSheet />
   </view>
 </template>
 
@@ -100,6 +101,7 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import NavBar from '@/components/NavBar.vue'
+import WxAuthSheet from '@/components/WxAuthSheet.vue'
 import { store, newApply, restoreFromConsult, isLoggedIn } from '@/store'
 import { beginLogin, requireLogin } from '@/services/auth'
 import { getSilent } from '@/utils/request'
