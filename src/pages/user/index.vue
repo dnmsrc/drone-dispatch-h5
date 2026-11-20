@@ -2,7 +2,13 @@
   <view class="page">
     <NightSky :star-count="40">
       <view class="user-head">
-        <image class="avatar" :src="avatarSrc" mode="aspectFill" />
+        <!-- 头像本身就是「取微信头像昵称」的入口：未登录先登录，已登录未授权就弹确认卡 -->
+        <view class="avatar-wrap" @click="onTapAvatar">
+          <image class="avatar" :src="avatarSrc" mode="aspectFill" />
+          <view v-if="user && !user.profileReady" class="avatar-tip">
+            <text class="avatar-tip-txt">微信</text>
+          </view>
+        </view>
         <view class="u-info">
           <text class="u-name">{{ user ? user.nickname : '未登录' }}</text>
           <text class="u-sub">{{ userSub }}</text>
@@ -168,6 +174,23 @@ function doProfileAuth() {
   beginProfileAuth()
 }
 
+/**
+ * 点头像取微信头像昵称（与「微信资料」入口同一套流程）。
+ * 分三态而不是一律弹卡：没登录先去登录；已拿到就提示一句（微信重复授权没有意义）；
+ * 登录了但还没资料 —— 这才需要用户授权，先过我们自己的确认卡，再走 snsapi_userinfo。
+ */
+function onTapAvatar() {
+  if (!user.value) {
+    beginLogin('/pages/user/index')
+    return
+  }
+  if (user.value.profileReady) {
+    uni.showToast({ title: '头像昵称已获取', icon: 'none' })
+    return
+  }
+  beginProfileAuth()
+}
+
 function goOrders(tab: string) {
   if (!isLoggedIn()) {
     beginLogin('/pages/order/list?tab=' + tab)
@@ -215,12 +238,36 @@ onShow(() => refreshActive())
   gap: 24rpx;
   padding: 40rpx 36rpx 80rpx;
 }
+.avatar-wrap {
+  position: relative;
+  /* 可点击：给一点按下反馈，用户才知道头像是个入口 */
+  transition: transform 0.15s ease;
+}
+.avatar-wrap:active {
+  transform: scale(0.94);
+}
 .avatar {
   width: 120rpx;
   height: 120rpx;
   border-radius: 50%;
   border: 4rpx solid rgba(255, 255, 255, 0.3);
   background: rgba(255, 255, 255, 0.1);
+  display: block;
+}
+/* 未取微信资料时的角标：微信绿 = 点这里可以用微信身份换头像昵称 */
+.avatar-tip {
+  position: absolute;
+  right: -8rpx;
+  bottom: -8rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #07c160, #06ad56);
+  border: 3rpx solid #0b1230;
+  line-height: 1.5;
+}
+.avatar-tip-txt {
+  color: #fff;
+  font-size: 20rpx;
 }
 .u-info {
   flex: 1;
