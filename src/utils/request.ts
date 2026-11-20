@@ -54,6 +54,14 @@ function hideToastSafely(): void {
  */
 const REAL_WX_APIS = ['/auth/wechat-login', '/auth/sms/', '/user/wechat-profile', '/user/bind-']
 
+/**
+ * 后端把用户端接口统一放在 /api/h5 下，与 /api/auth（管理端账号密码登录）分开，避免同名路径互相踩。
+ * 页面里的调用地址沿用 mock 的写法（/auth/...、/user/...），只在这里加前缀，页面不用关心两套路由的差异。
+ */
+function realPath(url: string): string {
+  return url.startsWith('/auth/') || url.startsWith('/user/') ? '/h5' + url : url
+}
+
 function needRealBackend(url: string): boolean {
   return WX_AUTH_MODE === 'real' && REAL_WX_APIS.some((p) => url.startsWith(p))
 }
@@ -66,7 +74,7 @@ async function httpRequest(
 ): Promise<{ code: number; msg?: string; data?: any }> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (store.token) headers.Authorization = 'Bearer ' + store.token
-  const resp = await fetch(API_BASE + url, {
+  const resp = await fetch(API_BASE + realPath(url), {
     method,
     headers,
     body: method === 'GET' ? undefined : JSON.stringify(data),
@@ -79,6 +87,15 @@ async function httpRequest(
   }
   if (!resp.ok && !body) {
     throw { code: resp.status, msg: 'HTTP ' + resp.status } as ApiError
+  }
+  // 后端统一信封是 { code, message, data }（管理端一直用这个字段名，成功码 200），
+  // mock 是 { code: 0, msg }。这里把两者归一，页面侧的错误提示与 401 分支只写一套。
+  if (body) {
+    if (body.msg == null && body.message != null) body.msg = body.message
+    if (body.code === 200) body.code = 0
+    // 管理端信封的未认证码是 401（HTTP 401），用户端拦截器抛的是 40100；
+    // 对 H5 来说两者语义相同，统一收口到 40100，交给下面的登录失效分支处理。
+    if (body.code === 401) body.code = 40100
   }
   return body
 }
