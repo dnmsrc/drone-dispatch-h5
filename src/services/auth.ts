@@ -141,7 +141,13 @@ export function beginLogin(redirect?: string, opts: BeginLoginOptions = {}): voi
 }
 
 async function runLogin(redirect?: string, opts: BeginLoginOptions = {}): Promise<void> {
-  const back = redirect || wx.currentRoute() || '/pages/index/index'
+  const here = wx.currentRoute()
+  // 登录后回哪：默认回「用户点按钮时所在的页面」，让他自己再点一次原来的按钮。
+  // 不做「登录成功就替他继续下一步」——从首页点「立即预约」被直接带进预约表单，
+  // 用户会觉得页面自己跑了。只有登录页里主动点「微信登录」时才回它声明的目标页。
+  const back = here.startsWith(LOGIN_PAGE)
+    ? redirect || '/pages/index/index'
+    : here || redirect || '/pages/index/index'
   const needConfirm = opts.confirm !== false
 
   // ① 微信内 + 真实模式：静默授权，只换 openid，不索取任何个人信息
@@ -240,14 +246,22 @@ export interface WechatProfile {
   avatar?: string
   /** 后端可回传 unionid / openid，前端只用于展示，不参与鉴权 */
   openid?: string
+  /** 微信没给真实昵称头像（返回「微信用户」+ 默认灰头像）时为 true */
+  masked?: boolean
 }
 
 /** 把拿到的微信资料回填到当前登录用户（不动 token） */
 function applyProfile(d: WechatProfile): void {
-  patchUser({ nickname: d.nickname, avatar: d.avatar, profileReady: true })
-  if (d.nickname) {
-    uni.showToast({ title: '已获取微信资料', icon: 'success' })
+  // 微信可能只回一个脱敏昵称（「微信用户」）和默认灰头像。照单全收会把占位数据
+  // 当成用户资料展示，看着就像「假头像假昵称」，所以宁可留白让用户自己设置。
+  if (d.masked || !d.nickname || d.nickname === '微信用户') {
+    // 记下「微信这边拿不到」，下次点头像直接进手动编辑，不再让用户重复授权一次还是空手回来
+    patchUser({ profileMasked: true, profileReady: false })
+    uni.showToast({ title: '微信未返回真实昵称头像，请手动设置', icon: 'none', duration: 2500 })
+    return
   }
+  patchUser({ nickname: d.nickname, avatar: d.avatar, profileReady: true })
+  uni.showToast({ title: '已获取微信资料', icon: 'success' })
 }
 
 /**
@@ -259,6 +273,12 @@ function applyProfile(d: WechatProfile): void {
 export async function beginProfileAuth(): Promise<void> {
   if (!isLoggedIn()) {
     uni.showToast({ title: '请先登录', icon: 'none' })
+    return
+  }
+  // 先判断环境再弹卡：网页授权只能在微信内置浏览器里发起，在普通浏览器弹一张
+  // 「允许获取」的卡、点完却只能告诉用户「请用微信打开」，是多出来的一道无效操作
+  if (!(loginMode() === 'real' && wx.isWeixin()) && loginMode() !== 'mock') {
+    uni.showToast({ title: '请用微信打开后再获取微信资料', icon: 'none' })
     return
   }
 
@@ -291,16 +311,15 @@ export async function beginProfileAuth(): Promise<void> {
       })
     return
   }
-
-  // 微信外：网页授权根本无法发起，说清楚而不是静默失败
-  uni.showToast({ title: '请用微信打开后再获取微信资料', icon: 'none' })
 }
 export function jumpAfterLogin(redirect?: string): void {
   const url = redirect || '/pages/index/index'
   uni.reLaunch({
     url,
     fail: () => {
-      uni.redirectTo({ url, fail: () => uni.reLaunch({ url: '/pages/index/index' }) })
+      // H5 兜底：回跳落地时 uni 的路由可能还没就绪，reLaunch/redirectTo 会静默失败，
+      // 用户就停在落地页（首页）而不是原来的页面。hash 路由对 hashchange 有响应，最可靠。
+      if (wx.isH5()) window.location.hash = url
     },
   })
 }

@@ -22,6 +22,8 @@ export interface MockUser {
   phone?: string
   /** 微信昵称头像是否已由用户主动授权获取（登录只拿 openid，资料是后补的） */
   profileReady?: boolean
+  /** 微信只回了脱敏资料（「微信用户」+ 默认灰头像）：此后不再重复走授权，直接手动设置 */
+  profileMasked?: boolean
 }
 
 export interface ApplyDraft {

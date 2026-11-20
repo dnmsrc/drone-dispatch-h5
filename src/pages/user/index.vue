@@ -2,15 +2,15 @@
   <view class="page">
     <NightSky :star-count="40">
       <view class="user-head">
-        <!-- 头像本身就是「取微信头像昵称」的入口：未登录先登录，已登录未授权就弹确认卡 -->
+        <!-- 头像本身就是「设置微信头像昵称」的入口：未登录先登录，已登录就弹编辑面板 -->
         <view class="avatar-wrap" @click="onTapAvatar">
           <image class="avatar" :src="avatarSrc" mode="aspectFill" />
           <view v-if="user && !user.profileReady" class="avatar-tip">
-            <text class="avatar-tip-txt">微信</text>
+            <text class="avatar-tip-txt">设置</text>
           </view>
         </view>
         <view class="u-info">
-          <text class="u-name">{{ user ? user.nickname : '未登录' }}</text>
+          <text class="u-name" @click="onTapAvatar">{{ displayName }}</text>
           <text class="u-sub">{{ userSub }}</text>
         </view>
         <button v-if="!user" class="login-btn" @click="goLogin">去登录</button>
@@ -33,11 +33,11 @@
 
     <!-- 功能列表 -->
     <view class="card menu-card">
-      <!-- 微信资料：登录只要 openid，昵称头像由用户在这里主动授权（这一句才会弹微信授权页） -->
-      <view v-if="user" class="menu-item" @click="doProfileAuth">
+      <!-- 头像昵称：微信可能只回脱敏资料，所以入口既给「用微信填」也允许自己改 -->
+      <view v-if="user" class="menu-item" @click="openEditor">
         <text class="m-icon">🪪</text>
-        <text class="m-label">微信资料</text>
-        <text class="m-value">{{ user.profileReady ? '已获取 ›' : '获取头像昵称 ›' }}</text>
+        <text class="m-label">头像与昵称</text>
+        <text class="m-value">{{ user.profileReady ? '去修改 ›' : '去设置 ›' }}</text>
       </view>
       <view class="menu-item" @click="goMine">
         <text class="m-icon">📋</text>
@@ -77,6 +77,14 @@
       </view>
     </view>
     <WxAuthSheet />
+    <ProfileEditor
+      :visible="editOpen"
+      :nickname="user?.nickname"
+      :avatar="user?.avatar"
+      @close="editOpen = false"
+      @save="onSaveProfile"
+      @wechat="onWechatInEditor"
+    />
   </view>
 </template>
 
@@ -88,8 +96,9 @@ import NightSky from '@/components/NightSky.vue'
 import TabBar from '@/components/TabBar.vue'
 import DroneLogo from '@/components/DroneLogo.vue'
 import WxAuthSheet from '@/components/WxAuthSheet.vue'
-import { store, isLoggedIn } from '@/store'
-import { beginLogin, beginProfileAuth, logout } from '@/services/auth'
+import ProfileEditor from '@/components/ProfileEditor.vue'
+import { store, isLoggedIn, patchUser } from '@/store'
+import { beginLogin, beginProfileAuth, canRealLogin, loginMode, logout } from '@/services/auth'
 import { getSilent } from '@/utils/request'
 import { avatar } from '@/mock/media'
 
@@ -103,6 +112,8 @@ const ico = (p: string, c = '#4A6CF7') =>
   `<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="${c}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${p}</svg>`
 
 const showAbout = ref(false)
+// 头像昵称编辑面板：微信能拿到真实资料就直接用，拿不到就让用户自己给（见 auth.applyProfile）
+const editOpen = ref(false)
 // 进行中的咨询单数量：入口上直接显示，用户不用点进去才知道在等客服
 const activeCount = ref(0)
 
@@ -129,10 +140,14 @@ const entries: Entry[] = [
 ]
 
 const user = computed(() => store.user)
+// 未设置资料时不显示后端建档的占位昵称（「微信用户_XXXX」），直接告诉用户这里可以设置
+const displayName = computed(() => {
+  if (!user.value) return '未登录'
+  return user.value.profileReady && user.value.nickname ? user.value.nickname : '点击设置昵称'
+})
 const userSub = computed(() => {
   if (!user.value) return '点击登录体验完整流程'
-  // 登录只换 openid，昵称头像是用户主动授权后才有的，两种状态要分开说
-  return user.value.profileReady ? '微信用户' : '已登录 · 可获取微信头像昵称'
+  return user.value.profileReady ? '已登录' : '已登录 · 点头像设置头像昵称'
 })
 const avatarSrc = computed(() => store.user?.avatar || avatar('guest'))
 const brandName = computed(() => store.profile?.brand?.appName || '星穹 SkyShow')
@@ -169,26 +184,44 @@ function goLogin() {
   beginLogin()
 }
 
-/** 用户主动唤起微信授权页，只为了拿昵称头像；登录流程从不索取这些 */
-function doProfileAuth() {
-  beginProfileAuth()
+/** 打开编辑面板（菜单入口） */
+function openEditor() {
+  editOpen.value = true
 }
 
 /**
- * 点头像取微信头像昵称（与「微信资料」入口同一套流程）。
- * 分三态而不是一律弹卡：没登录先去登录；已拿到就提示一句（微信重复授权没有意义）；
- * 登录了但还没资料 —— 这才需要用户授权，先过我们自己的确认卡，再走 snsapi_userinfo。
+ * 点头像 / 点昵称：先试微信授权（能拿到就一键填上），
+ * 微信只回脱敏数据或已经设置过，就直接进手动编辑。
  */
 function onTapAvatar() {
   if (!user.value) {
     beginLogin('/pages/user/index')
     return
   }
-  if (user.value.profileReady) {
-    uni.showToast({ title: '头像昵称已获取', icon: 'none' })
+  if (user.value.profileReady || user.value.profileMasked) {
+    editOpen.value = true
+    return
+  }
+  // 浏览器里网页授权根本发起不了（微信只允许在它自己的内置浏览器里授权），
+  // 那就别弹一张点完只能提示「请用微信打开」的卡，直接给手动设置
+  if (loginMode() === 'real' && !canRealLogin()) {
+    editOpen.value = true
     return
   }
   beginProfileAuth()
+}
+
+/** 编辑面板里的「用微信资料填充」：先关面板再跳授权，回来由 applyProfile 回填 */
+function onWechatInEditor() {
+  editOpen.value = false
+  beginProfileAuth()
+}
+
+/** 保存用户自己设置的头像昵称：这才是他的真实资料，之后不再提示去设置 */
+function onSaveProfile(d: { nickname: string; avatar: string }) {
+  patchUser({ nickname: d.nickname, avatar: d.avatar, profileReady: true, profileMasked: false })
+  editOpen.value = false
+  uni.showToast({ title: '已保存', icon: 'success' })
 }
 
 function goOrders(tab: string) {
