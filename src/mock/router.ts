@@ -381,7 +381,13 @@ function mockHash(s: string): string {
 }
 
 function publicUser(u: Json): Json {
-  return { id: u.id, nickname: u.nickname, avatar: u.avatar, phone: u.phone }
+  return {
+    id: u.id,
+    nickname: u.nickname,
+    avatar: u.avatar,
+    phone: u.phone,
+    profileReady: !!u.profileReady,
+  }
 }
 
 route('POST', '/auth/wechat-login', ({ body }) => {
@@ -412,6 +418,19 @@ route('POST', '/auth/logout', () => {
 route('GET', '/auth/me', () => {
   const u = authUser()
   return ok({ user: publicUser(u) })
+})
+
+// 主动获取微信昵称头像（snsapi_userinfo 一档，用户「我的」里点一下才会调）。
+// 真实后端：拿 code 调 /sns/userinfo → 回填 users 表 → 返回昵称头像。登录走的 base 授权拿不到这些。
+route('POST', '/user/wechat-profile', ({ body }) => {
+  if (!body.code) fail('缺少微信授权 code（请重新发起授权）', 40001)
+  const u = authUser()
+  const seq = mockHash(String(u.id)).slice(-4)
+  u.nickname = '微信用户_' + seq
+  u.avatar = avatar('wechat-' + seq)
+  u.profileReady = true
+  db.user = u
+  return ok({ nickname: u.nickname, avatar: u.avatar, openid: u.openid }, '已获取微信资料')
 })
 
 // ---- 手机号验证码登录（微信外兜底通道）----

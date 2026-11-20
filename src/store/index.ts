@@ -20,6 +20,8 @@ export interface MockUser {
   nickname: string
   avatar?: string
   phone?: string
+  /** 微信昵称头像是否已由用户主动授权获取（登录只拿 openid，资料是后补的） */
+  profileReady?: boolean
 }
 
 export interface ApplyDraft {
@@ -396,6 +398,16 @@ export function setLogin(token: string, user: MockUser): void {
   store.user = user
   uni.setStorageSync('token', token)
   uni.setStorageSync('user', user)
+}
+
+/**
+ * 只更新用户资料、不动 token：「我的」里用户主动授权拿到昵称头像后回填。
+ * 登录本身不索取这些信息，所以资料可能一直是空的，必须支持「登录后再补」。
+ */
+export function patchUser(patch: Partial<MockUser>): void {
+  if (!store.user) return
+  store.user = { ...store.user, ...patch }
+  uni.setStorageSync('user', store.user)
 }
 
 export function logout(): void {

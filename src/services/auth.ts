@@ -1,5 +1,11 @@
-// H5 登录编排（唯一入口）：微信扫码打开 H5 → 需要登录时自动发起微信网页授权 →
-// 用户点「允许」后回跳、用 code 换后端 token → 自动恢复原页面。
+// H5 登录编排（唯一入口）。三段职责分得很清楚：
+//
+// ① 登录 = 只要「能认人」的标识（openid），不做任何打扰：
+//    微信内 → snsapi_base 静默授权（无授权弹窗，跳一圈回来就登好了，用户点「预约」时触发）；
+//    微信外 → 手机号 + 验证码（网页授权必须在微信内置浏览器里发起，浏览器里做不到）。
+// ② 个人信息（昵称 / 头像）≠ 登录：由用户在「我的」里主动点一下，
+//    走 snsapi_userinfo（这一档才会真弹「是否允许获取你的昵称、头像」），见 beginProfileAuth。
+// ③ 回跳处理按 intent 分派：登录回跳换 token，资料回跳只更新资料，互不干扰。
 //
 // 分层约定：
 // - utils/wechat.ts 只管环境与 URL（纯函数）；
@@ -7,14 +13,10 @@
 // - store 只管登录态本身（token / user / 持久化），不反向依赖本文件，避免循环引用。
 //
 // 两种模式（VITE_WX_AUTH_MODE）：
-// - mock：本地模拟微信授权，不需要公众号资质；登录页展示模拟授权层，点「允许」即登录。
-// - real：真实跳转微信授权页（仅微信内可用）；未配置 AppID 时自动降级 mock，避免用户卡死。
-//
-// 第二条通道（手机号验证码）：微信外无法发起网页授权，直接用手机号 + 验证码登录；
-// 微信内也能切换（用户拒绝授权、或只想用手机号）。两条通道登录成功后的收尾完全一致：
-// 都落到 setLogin(token, user) + jumpAfterLogin(redirect)，页面侧不需要区分用户是怎么登进来的。
+// - mock：本地模拟微信授权，不需要公众号资质；微信内模拟「静默登录」，微信外照常手机号验证码。
+// - real：真实跳转微信授权（仅微信内可用）；未配置 AppID 时自动降级 mock，避免用户卡死。
 import { post, postSilent } from '@/utils/request'
-import { store, setLogin, isLoggedIn, logout as clearSession } from '@/store'
+import { store, setLogin, patchUser, isLoggedIn, logout as clearSession } from '@/store'
 import { WX_APP_ID, WX_AUTH_MODE, WX_SCOPE, WX_REDIRECT_URI } from '@/config/env'
 import * as wx from '@/utils/wechat'
 
@@ -23,6 +25,8 @@ export interface WxUserInfo {
   nickname: string
   avatar?: string
   phone?: string
+  /** 微信昵称头像是否已拿到（登录用 base 授权拿不到，需「我的」里主动授权后才为 true） */
+  profileReady?: boolean
 }
 
 export interface LoginResp {
@@ -37,7 +41,14 @@ export const LOGIN_PAGE = '/pages/login/login'
 
 const KEY_STATE = 'wx_oauth_state'
 const KEY_REDIRECT = 'wx_oauth_redirect'
+const KEY_INTENT = 'wx_oauth_intent'
 const KEY_MOCK_OPENID = 'mock_wx_openid'
+
+/** 一次授权往返的目的：登录换 token，还是「我的」里补昵称头像 */
+export type AuthIntent = 'login' | 'profile'
+
+/** 取昵称头像只能用 snsapi_userinfo —— snsapi_base 换不到用户资料 */
+const PROFILE_SCOPE = 'snsapi_userinfo'
 
 /** sessionStorage 兜底：小程序端没有该对象，全部读写都要容错 */
 function ss(): Storage | null {
@@ -68,14 +79,15 @@ export function canRealLogin(): boolean {
   return loginMode() === 'real' && wx.isWeixin()
 }
 
-/** 把「一次性 state + 登录后回哪」暂存到 sessionStorage（state 只能放 [a-zA-Z0-9]，回跳目标不能进 state） */
-function stashAuth(redirect: string): string {
+/** 把「一次性 state + 意图 + 登录后回哪」暂存到 sessionStorage（state 只能放 [a-zA-Z0-9]，回跳目标不能进 state） */
+function stashAuth(redirect: string, intent: AuthIntent = 'login'): string {
   const state = wx.randomState()
   const s = ss()
   if (s) {
     try {
       s.setItem(KEY_STATE, state)
       s.setItem(KEY_REDIRECT, redirect)
+      s.setItem(KEY_INTENT, intent)
     } catch {
       /* 隐私模式：退化为「回首页」，不影响登录本身 */
     }
@@ -89,6 +101,7 @@ function clearAuthStash(): void {
   try {
     s.removeItem(KEY_STATE)
     s.removeItem(KEY_REDIRECT)
+    s.removeItem(KEY_INTENT)
   } catch {
     /* ignore */
   }
@@ -96,8 +109,10 @@ function clearAuthStash(): void {
 
 /**
  * 发起登录（唯一入口）。
+ * 微信内走静默授权（snsapi_base）——不弹「是否允许」、不问昵称头像，用户点完「预约」就回来继续；
+ * 微信外只能走手机号验证码（网页授权必须在微信内置浏览器里发起）。
  * @param redirect 登录成功后回到哪个页面，缺省用当前路由
- * @param opts.fromClick 是否由用户点击触发。微信要求「页面加载后无交互直接跳授权」会被固化成快照页，
+ * @param opts.fromClick 是否由用户点击触发。微信会把「页面加载后无交互直接跳授权」固化成快照页，
  *        所以 true 才直接跳转，false（页面 onLoad 兜底）先弹一次确认再跳。
  */
 export function beginLogin(redirect?: string, opts: { fromClick?: boolean } = {}): void {
@@ -105,8 +120,9 @@ export function beginLogin(redirect?: string, opts: { fromClick?: boolean } = {}
   // 默认按「用户点击触发」处理：绝大多数入口是点按钮/点卡片进来的
   const fromClick = opts.fromClick !== false
 
+  // ① 微信内 + 真实模式：静默授权，只换 openid，不索取任何个人信息
   if (loginMode() === 'real' && wx.isWeixin()) {
-    const state = stashAuth(back)
+    const state = stashAuth(back, 'login')
     const url = wx.buildAuthorizeUrl({
       appId: WX_APP_ID,
       redirectUri: wx.callbackBase(WX_REDIRECT_URI),
@@ -122,8 +138,8 @@ export function beginLogin(redirect?: string, opts: { fromClick?: boolean } = {}
     }
     uni.showModal({
       title: '需要登录',
-      content: '微信一键登录后即可继续操作',
-      confirmText: '微信登录',
+      content: '微信内会自动完成登录，确认后继续',
+      confirmText: '继续',
       cancelText: '取消',
       success: (r) => {
         if (r.confirm) jump()
@@ -132,8 +148,29 @@ export function beginLogin(redirect?: string, opts: { fromClick?: boolean } = {}
     return
   }
 
-  // 进登录页：mock 模式显示模拟授权卡；真实模式在微信外无法网页授权，登录页直接给手机号验证码
+  // ② 微信内 + mock 模式：模拟一次静默登录，也不经过登录页，保证演示与真实链路同构
+  if (loginMode() === 'mock' && wx.isWeixin()) {
+    silentMockLogin(back)
+    return
+  }
+
+  // ③ 微信外（含 mock）：网页授权发起不了，直接给手机号验证码登录页
   uni.navigateTo({ url: LOGIN_PAGE + '?redirect=' + encodeURIComponent(back) })
+}
+
+/** mock 下的静默登录：没有授权页可跳，直接调一次换 token 的接口，行为对齐真实链路 */
+function silentMockLogin(back: string): void {
+  uni.showLoading({ title: '登录中…', mask: true })
+  completeMockLogin()
+    .then(() => {
+      uni.hideLoading()
+      uni.showToast({ title: '登录成功', icon: 'success' })
+      setTimeout(() => jumpAfterLogin(back), 400)
+    })
+    .catch((e: { msg?: string }) => {
+      uni.hideLoading()
+      uni.showToast({ title: (e && e.msg) || '登录失败，请重试', icon: 'none' })
+    })
 }
 
 /**
@@ -179,7 +216,63 @@ export function completeMockLogin(): Promise<LoginResp> {
   })
 }
 
-/** 登录成功后的跳转：优先 reLaunch（清空授权往返留下的页面栈），失败再退 redirectTo */
+/** 微信资料（昵称头像）：登录不索取，只在用户主动授权后回填 */
+export interface WechatProfile {
+  nickname?: string
+  avatar?: string
+  /** 后端可回传 unionid / openid，前端只用于展示，不参与鉴权 */
+  openid?: string
+}
+
+/** 把拿到的微信资料回填到当前登录用户（不动 token） */
+function applyProfile(d: WechatProfile): void {
+  patchUser({ nickname: d.nickname, avatar: d.avatar, profileReady: true })
+  if (d.nickname) {
+    uni.showToast({ title: '已获取微信资料', icon: 'success' })
+  }
+}
+
+/**
+ * 主动获取微信昵称头像（「我的」里由用户点一下触发）。
+ * 只有这一档（snsapi_userinfo）才会真的弹「是否允许 获取你的昵称、头像」——登录从不弹。
+ * 必须已登录：资料要挂到当前账号上。
+ */
+export function beginProfileAuth(): void {
+  if (!isLoggedIn()) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    return
+  }
+
+  if (loginMode() === 'real' && wx.isWeixin()) {
+    const state = stashAuth(wx.currentRoute() || '/pages/user/index', 'profile')
+    const url = wx.buildAuthorizeUrl({
+      appId: WX_APP_ID,
+      redirectUri: wx.callbackBase(WX_REDIRECT_URI),
+      scope: PROFILE_SCOPE,
+      state,
+    })
+    uni.showLoading({ title: '正在打开微信授权…', mask: true })
+    if (wx.isH5()) window.location.replace(url)
+    return
+  }
+
+  if (loginMode() === 'mock') {
+    uni.showLoading({ title: '获取中…', mask: true })
+    post<WechatProfile>('/user/wechat-profile', { code: 'mock' })
+      .then((d) => {
+        uni.hideLoading()
+        applyProfile(d)
+      })
+      .catch((e: { msg?: string }) => {
+        uni.hideLoading()
+        uni.showToast({ title: (e && e.msg) || '获取失败，请重试', icon: 'none' })
+      })
+    return
+  }
+
+  // 微信外：网页授权根本无法发起，说清楚而不是静默失败
+  uni.showToast({ title: '请用微信打开后再获取微信资料', icon: 'none' })
+}
 export function jumpAfterLogin(redirect?: string): void {
   const url = redirect || '/pages/index/index'
   uni.reLaunch({
@@ -191,7 +284,8 @@ export function jumpAfterLogin(redirect?: string): void {
 }
 
 /**
- * 处理微信授权回跳（real 模式）：解析 code/state → 校验 → 换 token → 回原页面。
+ * 处理微信授权回跳（real 模式）：解析 code/state → 校验 → 按 intent 分派：
+ * intent=login 用 code 换 token；intent=profile 只换昵称头像回填，不动登录态。
  * App.onLaunch 调用一次即可；没有 code 时是空操作。
  */
 export function resumeFromCallback(): void {
@@ -201,17 +295,34 @@ export function resumeFromCallback(): void {
 
   const s = ss()
   const expected = (s && s.getItem(KEY_STATE)) || ''
-  const redirect = (s && s.getItem(KEY_REDIRECT)) || '/pages/index/index'
+  const intent = ((s && s.getItem(KEY_INTENT)) || 'login') as AuthIntent
+  const redirect =
+    (s && s.getItem(KEY_REDIRECT)) ||
+    (intent === 'profile' ? '/pages/user/index' : '/pages/index/index')
   // 先清地址栏再发请求：无论成功失败，code 都不能留在 URL 里被二次使用
   wx.stripCallback()
   clearAuthStash()
 
   // state 不匹配 = 不是本次会话发起的授权（或已被使用），拒绝换取，防 CSRF / 重放
   if (!expected || cb.state !== expected) {
-    uni.showToast({ title: '登录校验失败，请重新登录', icon: 'none' })
+    uni.showToast({ title: '授权校验失败，请重试', icon: 'none' })
     return
   }
 
+  // ② 资料授权回跳：只更新昵称头像，不碰 token
+  if (intent === 'profile') {
+    postSilent<WechatProfile>('/user/wechat-profile', { code: cb.code })
+      .then((d) => {
+        applyProfile(d)
+        setTimeout(() => jumpAfterLogin(redirect), 400)
+      })
+      .catch((e: { msg?: string }) => {
+        uni.showToast({ title: (e && e.msg) || '获取微信资料失败，请重试', icon: 'none' })
+      })
+    return
+  }
+
+  // ① 登录回跳：code 交后端换 token（AppSecret 只在后端）
   postSilent<LoginResp>('/auth/wechat-login', { code: cb.code })
     .then((d) => {
       setLogin(d.token, d.user)

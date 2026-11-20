@@ -5,7 +5,7 @@
         <image class="avatar" :src="avatarSrc" mode="aspectFill" />
         <view class="u-info">
           <text class="u-name">{{ user ? user.nickname : '未登录' }}</text>
-          <text class="u-sub">{{ user ? '微信授权用户' : '点击登录体验完整流程' }}</text>
+          <text class="u-sub">{{ userSub }}</text>
         </view>
         <button v-if="!user" class="login-btn" @click="goLogin">去登录</button>
       </view>
@@ -27,6 +27,12 @@
 
     <!-- 功能列表 -->
     <view class="card menu-card">
+      <!-- 微信资料：登录只要 openid，昵称头像由用户在这里主动授权（这一句才会弹微信授权页） -->
+      <view v-if="user" class="menu-item" @click="doProfileAuth">
+        <text class="m-icon">🪪</text>
+        <text class="m-label">微信资料</text>
+        <text class="m-value">{{ user.profileReady ? '已获取 ›' : '获取头像昵称 ›' }}</text>
+      </view>
       <view class="menu-item" @click="goMine">
         <text class="m-icon">📋</text>
         <text class="m-label">我的预约</text>
@@ -75,7 +81,7 @@ import NightSky from '@/components/NightSky.vue'
 import TabBar from '@/components/TabBar.vue'
 import DroneLogo from '@/components/DroneLogo.vue'
 import { store, isLoggedIn } from '@/store'
-import { beginLogin, logout } from '@/services/auth'
+import { beginLogin, beginProfileAuth, logout } from '@/services/auth'
 import { getSilent } from '@/utils/request'
 import { avatar } from '@/mock/media'
 
@@ -115,6 +121,11 @@ const entries: Entry[] = [
 ]
 
 const user = computed(() => store.user)
+const userSub = computed(() => {
+  if (!user.value) return '点击登录体验完整流程'
+  // 登录只换 openid，昵称头像是用户主动授权后才有的，两种状态要分开说
+  return user.value.profileReady ? '微信用户' : '已登录 · 可获取微信头像昵称'
+})
 const avatarSrc = computed(() => store.user?.avatar || avatar('guest'))
 const brandName = computed(() => store.profile?.brand?.appName || '星穹 SkyShow')
 const brandShort = computed(() => (store.profile?.brand?.appName || '星穹 SkyShow').split(' ')[0])
@@ -148,6 +159,11 @@ function goMine() {
 
 function goLogin() {
   beginLogin()
+}
+
+/** 用户主动唤起微信授权页，只为了拿昵称头像；登录流程从不索取这些 */
+function doProfileAuth() {
+  beginProfileAuth()
 }
 
 function goOrders(tab: string) {

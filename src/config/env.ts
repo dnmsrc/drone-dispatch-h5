@@ -12,8 +12,11 @@ export const MOCK_DELAY = Number(import.meta.env.VITE_MOCK_DELAY || 0)
 export const WX_AUTH_MODE = (import.meta.env.VITE_WX_AUTH_MODE || 'mock') as 'mock' | 'real'
 // 服务号 AppID 是公开标识（不是密钥），可以进仓库；AppSecret 只能放后端环境变量
 export const WX_APP_ID = import.meta.env.VITE_WX_APP_ID || ''
-// snsapi_userinfo：弹授权页、可拿昵称头像（符合「用户同意即登录」）；snsapi_base：静默只拿 openid
-export const WX_SCOPE = import.meta.env.VITE_WX_SCOPE || 'snsapi_userinfo'
+// 登录用授权作用域。snsapi_base（默认）：静默授权，无授权弹窗，只拿 openid —— 登录只需要「能认人」的标识，
+// 不该为了登录逼用户同意「获取昵称头像」。昵称头像改由用户在「我的」里主动触发 snsapi_userinfo 授权
+// （见 services/auth.ts 的 beginProfileAuth），那时才会真的弹授权页。
+// 若确实想在登录时就弹授权页顺手拿资料，把它改成 snsapi_userinfo 即可。
+export const WX_SCOPE = import.meta.env.VITE_WX_SCOPE || 'snsapi_base'
 // 授权回调基址，必须是「网页授权域名」下的地址；留空取当前站点根目录
 export const WX_REDIRECT_URI = import.meta.env.VITE_WX_REDIRECT_URI || ''
 
