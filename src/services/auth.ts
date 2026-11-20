@@ -28,6 +28,8 @@ export interface WxUserInfo {
   nickname: string
   avatar?: string
   phone?: string
+  /** 微信身份（本机记下来，换一种登录方式时用来合并到同一个账号） */
+  openid?: string
   /** 微信昵称头像是否已拿到（登录用 base 授权拿不到，需「我的」里主动授权后才为 true） */
   profileReady?: boolean
 }
@@ -35,6 +37,8 @@ export interface WxUserInfo {
 export interface LoginResp {
   token: string
   user: WxUserInfo
+  /** 本次登录命中了已有账号（把新身份绑到他之前的账号上），而不是新建的 */
+  merged?: boolean
 }
 
 export type LoginMode = 'mock' | 'real'
@@ -46,6 +50,39 @@ const KEY_STATE = 'wx_oauth_state'
 const KEY_REDIRECT = 'wx_oauth_redirect'
 const KEY_INTENT = 'wx_oauth_intent'
 const KEY_MOCK_OPENID = 'mock_wx_openid'
+// 本机记住的两个身份：上次用微信登录的 openid、上次用手机号登录的号码。
+// 换一种方式登录时把它们带给后端，让后端把新身份绑到已有账号上 —— 同一部手机上的，
+// 大概率是同一个人（短信验证码已证明手机号归属，openid 由微信签名保证）。
+const KEY_SAVED_OPENID = 'wx_saved_openid'
+const KEY_SAVED_PHONE = 'wx_saved_phone'
+
+function savedValue(key: string): string {
+  try {
+    return uni.getStorageSync(key) || ''
+  } catch {
+    return ''
+  }
+}
+
+/** 本机上次微信登录的 openid（没有则空串） */
+function savedOpenid(): string {
+  return savedValue(KEY_SAVED_OPENID)
+}
+
+/** 本机上次手机号登录的号码（没有则空串） */
+function savedPhone(): string {
+  return savedValue(KEY_SAVED_PHONE)
+}
+
+/** 登录成功后记住这台设备上的身份，供下一次（可能是另一种方式）登录时合并到同一账号 */
+function rememberIdentity(user: WxUserInfo): void {
+  try {
+    if (user.openid) uni.setStorageSync(KEY_SAVED_OPENID, user.openid)
+    if (user.phone) uni.setStorageSync(KEY_SAVED_PHONE, user.phone)
+  } catch {
+    /* 隐私模式：记不住就退化成「每次新建」，不影响本次登录 */
+  }
+}
 
 /** 一次授权往返的目的：登录换 token，还是「我的」里补昵称头像 */
 export type AuthIntent = 'login' | 'profile'
@@ -187,9 +224,9 @@ async function runLogin(redirect?: string, opts: BeginLoginOptions = {}): Promis
 function silentMockLogin(back: string): void {
   uni.showLoading({ title: '登录中…', mask: true })
   completeMockLogin()
-    .then(() => {
+    .then((d) => {
       uni.hideLoading()
-      uni.showToast({ title: '登录成功', icon: 'success' })
+      uni.showToast({ title: d.merged ? '已登录你之前的账号' : '登录成功', icon: 'success' })
       setTimeout(() => jumpAfterLogin(back), 400)
     })
     .catch((e: { msg?: string }) => {
@@ -235,8 +272,11 @@ export function completeMockLogin(): Promise<LoginResp> {
   return post<LoginResp>('/auth/wechat-login', {
     code: 'mock',
     mockOpenid: mockOpenid(),
+    // 本机上次手机号登录过的号码：先手机号后微信时，让后端并到那个账号上而不是新建
+    phone: savedPhone(),
   }).then((d) => {
     setLogin(d.token, d.user)
+    rememberIdentity(d.user)
     return d
   })
 }
@@ -384,10 +424,11 @@ export function resumeFromCallback(): void {
   }
 
   // ① 登录回跳：code 交后端换 token（AppSecret 只在后端）
-  postSilent<LoginResp>('/auth/wechat-login', { code: cb.code })
+  postSilent<LoginResp>('/auth/wechat-login', { code: cb.code, phone: savedPhone() })
     .then((d) => {
       setLogin(d.token, d.user)
-      uni.showToast({ title: '登录成功', icon: 'success' })
+      rememberIdentity(d.user)
+      uni.showToast({ title: d.merged ? '已登录你之前的账号' : '登录成功', icon: 'success' })
       jumpAfterLogin(redirect)
       setTimeout(hideBootSplash, 160)
     })
@@ -442,8 +483,11 @@ export function sendSmsCode(phone: string): Promise<SmsCodeResp> {
 
 /** 手机号 + 验证码登录：成功后与微信通道共用同一套登录态写入，页面无需区分来源 */
 export function loginWithSms(phone: string, code: string): Promise<LoginResp> {
-  return post<LoginResp>('/auth/sms/login', { phone, code }).then((d) => {
+  // 带上本机上次微信登录的 openid：先微信后手机号时，后端把手机号绑到他之前的微信账号上，
+  // 而不是再建一个新账号（返回 merged=true，页面据此提示「已登录你之前的账号」）
+  return post<LoginResp>('/auth/sms/login', { phone, code, openid: savedOpenid() }).then((d) => {
     setLogin(d.token, d.user)
+    rememberIdentity(d.user)
     return d
   })
 }

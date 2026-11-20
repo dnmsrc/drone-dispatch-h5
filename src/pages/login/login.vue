@@ -181,8 +181,8 @@ function startReal() {
 function allow() {
   loading.value = true
   completeMockLogin()
-    .then(() => {
-      uni.showToast({ title: '登录成功', icon: 'success' })
+    .then((d) => {
+      uni.showToast({ title: d.merged ? '已登录你之前的账号' : '登录成功', icon: 'success' })
       setTimeout(() => jumpAfterLogin(redirect.value || '/pages/index/index'), 400)
     })
     .catch(() => {
@@ -245,8 +245,8 @@ function submitSms() {
   if (!canSubmit.value) return
   submitting.value = true
   loginWithSms(phone.value, code.value)
-    .then(() => {
-      uni.showToast({ title: '登录成功', icon: 'success' })
+    .then((d) => {
+      uni.showToast({ title: d.merged ? '已登录你之前的账号' : '登录成功', icon: 'success' })
       setTimeout(() => jumpAfterLogin(redirect.value || '/pages/index/index'), 400)
     })
     .catch(() => {

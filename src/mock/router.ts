@@ -385,28 +385,88 @@ function publicUser(u: Json): Json {
     id: u.id,
     nickname: u.nickname,
     avatar: u.avatar,
-    phone: u.phone,
+    phone: u.phone || '',
+    openid: u.openid || '',
     profileReady: !!u.profileReady,
   }
 }
 
+// ---- 账号表：微信与手机号两种登录共用一份 ----
+// 口径与 wx-server.js 一致：openid 与 phone 是同一个账号上的两个「身份位」，不是两条账号。
+// 两种登录都先按已有身份找账号、找不到才建档，否则同一个人换个登录方式就会变成两个人。
+// 账号落 localStorage：刷新页面 / 重新扫码进来后「他之前的账号」还在 —— 这是
+// 「手机号登录不该新建账号」能被验证的前提。
+const USERS_KEY = 'mock_users'
+
+function loadUsers(): Json[] {
+  try {
+    const raw = uni.getStorageSync(USERS_KEY)
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw
+    return Array.isArray(arr) ? arr : []
+  } catch {
+    return []
+  }
+}
+
+function saveUsers(): void {
+  try {
+    uni.setStorageSync(USERS_KEY, JSON.stringify(db.users))
+  } catch {
+    /* 隐私模式：账号只活在内存里，不影响本次演示 */
+  }
+}
+
+function byOpenid(openid: string): Json | null {
+  if (!openid) return null
+  return db.users.find((x) => x && x.openid === openid) || null
+}
+
+function byPhone(phone: string): Json | null {
+  if (!phone) return null
+  return db.users.find((x) => x && x.phone === phone) || null
+}
+
+/** 新建账号骨架（调用方补身份位与昵称头像） */
+function newUser(): Json {
+  const seq = String(db.users.length + 1).padStart(4, '0')
+  return { id: 'u' + (9000 + db.users.length), nickname: '用户' + seq, avatar: '' }
+}
+
+// 启动时恢复账号表（db 定义在前，这里补一次即可）
+const persistedUsers = loadUsers()
+if (persistedUsers.length) db.users = persistedUsers
+
 route('POST', '/auth/wechat-login', ({ body }) => {
   if (!body.code) fail('缺少微信授权 code（请重新发起授权）', 40001)
   const openid = String(body.mockOpenid || 'oMock_' + mockHash(String(body.code)))
-  let u = db.users.find((x) => x.openid === openid)
+  // 本机上次用手机号登录过的号码：用来把「先手机号后微信」两次登录并到同一个账号
+  const rememberedPhone = String(body.phone || '')
+
+  let u = byOpenid(openid)
+  let merged = false
+  if (!u) {
+    const prev = PHONE_RE.test(rememberedPhone) ? byPhone(rememberedPhone) : null
+    // 该手机号账号还没绑微信 → 同一个人，把 openid 挂上去，登录他之前的账号
+    if (prev && !prev.openid) {
+      prev.openid = openid
+      u = prev
+      merged = true
+    }
+  }
   if (!u) {
     const seq = String(db.users.length + 1).padStart(4, '0')
-    u = {
-      id: 'u' + (9000 + db.users.length),
-      openid,
-      nickname: '微信用户_' + seq,
-      avatar: avatar('wechat-' + seq),
-      phone: '135****' + seq.slice(-4),
-    }
+    u = newUser()
+    u.openid = openid
+    u.nickname = '微信用户_' + seq
+    u.avatar = avatar('wechat-' + seq)
     db.users.push(u)
   }
+  saveUsers()
   db.user = u
-  return ok({ token: 'utk_mock_' + mockHash(openid), user: publicUser(u) }, '登录成功')
+  return ok(
+    { token: 'utk_mock_' + mockHash(openid), user: publicUser(u), merged },
+    merged ? '已登录你之前的账号' : '登录成功',
+  )
 })
 
 route('POST', '/auth/logout', () => {
@@ -429,6 +489,7 @@ route('POST', '/user/wechat-profile', ({ body }) => {
   u.nickname = '微信用户_' + seq
   u.avatar = avatar('wechat-' + seq)
   u.profileReady = true
+  saveUsers()
   db.user = u
   return ok({ nickname: u.nickname, avatar: u.avatar, openid: u.openid }, '已获取微信资料')
 })
@@ -456,19 +517,34 @@ route('POST', '/auth/sms/login', ({ body }) => {
   if (smsCodes.get(phone) !== code) fail('验证码不正确或已过期', 40004)
   smsCodes.delete(phone)
 
-  let u = db.users.find((x) => x.phone === phone)
+  // 本机上次微信登录的 openid：用来把「先微信后手机号」两次登录并到同一个账号
+  const openid = String(body.openid || '')
+
+  let u = byPhone(phone)
+  let merged = false
+  if (!u && openid) {
+    const w = byOpenid(openid)
+    // 该微信账号还没绑手机号 → 同一个人（短信验证已证明手机号归属），绑上，登录他之前的账号
+    if (w && !w.phone) {
+      w.phone = phone
+      u = w
+      merged = true
+    }
+  }
   if (!u) {
     const seq = String(db.users.length + 1).padStart(4, '0')
-    u = {
-      id: 'u' + (9000 + db.users.length),
-      nickname: '用户' + phone.slice(-4),
-      avatar: avatar('phone-' + seq),
-      phone,
-    }
+    u = newUser()
+    u.nickname = '用户' + phone.slice(-4)
+    u.avatar = avatar('phone-' + seq)
+    u.phone = phone
     db.users.push(u)
   }
+  saveUsers()
   db.user = u
-  return ok({ token: 'utk_mock_' + mockHash(phone), user: publicUser(u) }, '登录成功')
+  return ok(
+    { token: 'utk_mock_' + mockHash(phone), user: publicUser(u), merged },
+    merged ? '已登录你之前的账号' : '登录成功',
+  )
 })
 
 // ---- 订单 ----
