@@ -39,6 +39,18 @@
         <text class="m-label">头像与昵称</text>
         <text class="m-value">{{ user.profileReady ? '去修改 ›' : '去设置 ›' }}</text>
       </view>
+      <!-- 账号身份：两条登录通道都只是「认人」的一种方式，缺哪个就在这儿补哪个。
+           微信网页授权拿不到手机号，换设备/换浏览器后必须靠这个绑定才回得到同一个账号 -->
+      <view v-if="user && !user.phone" class="menu-item" @click="bindPhoneOpen = true">
+        <text class="m-icon">📱</text>
+        <text class="m-label">绑定手机号</text>
+        <text class="m-value">未绑定，去绑定 ›</text>
+      </view>
+      <view v-if="user && !user.openid" class="menu-item" @click="onBindWechat">
+        <text class="m-icon">💬</text>
+        <text class="m-label">绑定微信</text>
+        <text class="m-value">{{ bindWxHint }}</text>
+      </view>
       <view class="menu-item" @click="goMine">
         <text class="m-icon">📋</text>
         <text class="m-label">我的预约</text>
@@ -77,6 +89,11 @@
       </view>
     </view>
     <WxAuthSheet />
+    <BindPhoneDialog
+      :visible="bindPhoneOpen"
+      @close="bindPhoneOpen = false"
+      @bound="onBoundPhone"
+    />
     <ProfileEditor
       :visible="editOpen"
       :nickname="user?.nickname"
@@ -97,8 +114,16 @@ import TabBar from '@/components/TabBar.vue'
 import DroneLogo from '@/components/DroneLogo.vue'
 import WxAuthSheet from '@/components/WxAuthSheet.vue'
 import ProfileEditor from '@/components/ProfileEditor.vue'
+import BindPhoneDialog from '@/components/BindPhoneDialog.vue'
 import { store, isLoggedIn, patchUser } from '@/store'
-import { beginLogin, beginProfileAuth, canRealLogin, loginMode, logout } from '@/services/auth'
+import {
+  beginLogin,
+  beginProfileAuth,
+  beginBindWechat,
+  canRealLogin,
+  loginMode,
+  logout,
+} from '@/services/auth'
 import { getSilent } from '@/utils/request'
 import { avatar } from '@/mock/media'
 
@@ -114,6 +139,8 @@ const ico = (p: string, c = '#4A6CF7') =>
 const showAbout = ref(false)
 // 头像昵称编辑面板：微信能拿到真实资料就直接用，拿不到就让用户自己给（见 auth.applyProfile）
 const editOpen = ref(false)
+// 绑定手机号弹窗：账号还缺手机号时才会出现这个入口
+const bindPhoneOpen = ref(false)
 // 进行中的咨询单数量：入口上直接显示，用户不用点进去才知道在等客服
 const activeCount = ref(0)
 
@@ -147,7 +174,20 @@ const displayName = computed(() => {
 })
 const userSub = computed(() => {
   if (!user.value) return '点击登录体验完整流程'
-  return user.value.profileReady ? '已登录' : '已登录 · 点头像设置头像昵称'
+  // 副标题只说「这个账号认得哪种身份」，不给「点此设置头像昵称」——
+  // 头像上的「设置」角标已经表达过了，两件事堆一行会把 414px 宽的头部挤到换行
+  const ids: string[] = []
+  if (user.value.openid) ids.push('微信')
+  if (user.value.phone) ids.push('手机号 ' + maskPhone(user.value.phone))
+  if (!ids.length) return user.value.profileReady ? '已登录' : '已登录 · 点此设置头像昵称'
+  return ids.join(' / ')
+})
+const maskPhone = (p: string) => (p ? p.slice(0, 3) + '****' + p.slice(-4) : '')
+// 绑定微信只能从微信内置浏览器发起（网页授权的硬前提）：微信外先说清原因，
+// 而不是放一个点下去必然失败的按钮
+const bindWxHint = computed(() => {
+  if (loginMode() === 'mock') return '未绑定，去绑定 ›'
+  return canRealLogin() ? '未绑定，去绑定 ›' : '需在微信中打开'
 })
 const avatarSrc = computed(() => store.user?.avatar || avatar('guest'))
 const brandName = computed(() => store.profile?.brand?.appName || '星穹 SkyShow')
@@ -209,6 +249,16 @@ function onTapAvatar() {
     return
   }
   beginProfileAuth()
+}
+
+/** 绑定微信：先弹授权确认卡，允许后跳微信授权，回来由 auth.resumeFromCallback 接管 */
+function onBindWechat() {
+  beginBindWechat()
+}
+
+/** 绑定手机号成功：user 已由 auth.applyBind 整体替换（合并时 id 会变成旧账号），这里只关面板 */
+function onBoundPhone() {
+  bindPhoneOpen.value = false
 }
 
 /** 编辑面板里的「用微信资料填充」：先关面板再跳授权，回来由 applyProfile 回填 */

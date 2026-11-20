@@ -84,8 +84,8 @@ function rememberIdentity(user: WxUserInfo): void {
   }
 }
 
-/** 一次授权往返的目的：登录换 token，还是「我的」里补昵称头像 */
-export type AuthIntent = 'login' | 'profile'
+/** 一次授权往返的目的：登录换 token、「我的」里补昵称头像、还是给当前账号补绑微信 */
+export type AuthIntent = 'login' | 'profile' | 'bind'
 
 /** 取昵称头像只能用 snsapi_userinfo —— snsapi_base 换不到用户资料 */
 const PROFILE_SCOPE = 'snsapi_userinfo'
@@ -353,6 +353,92 @@ export async function beginProfileAuth(): Promise<void> {
     return
   }
 }
+/** 绑定结果：user 是绑定/合并之后的账号（合并时 id 会变成被并入的那个旧账号） */
+export interface BindResp {
+  user: WxUserInfo
+  /** 这次绑定把两个账号并成了一个（对方账号本来就已经存在） */
+  merged?: boolean
+}
+
+/**
+ * 绑定结果落账：token 不动（绑身份不是重新登录），但 user 要整体替换 ——
+ * 合并到旧账号时 id / 昵称 / 头像都会变成那个账号的，只 patch 会留下旧 id。
+ */
+function applyBind(d: BindResp): void {
+  if (d && d.user) {
+    setLogin(store.token, d.user)
+    rememberIdentity(d.user)
+  }
+  uni.showToast({ title: d && d.merged ? '已合并到你之前的账号' : '已绑定', icon: 'success' })
+}
+
+/**
+ * 「我的」里绑定手机号：验证码由后端校验，通过后这个账号就有了手机号。
+ * 真正的意义是换环境也能登回同一个账号 —— 微信网页授权拿不到手机号，
+ * 而「本机记住上次 openid」在微信内外两个存储环境之间并不共享。
+ */
+export function bindPhone(phone: string, code: string): Promise<BindResp> {
+  // openid 只给 Mock 用（它没有服务端会话，靠它定位「当前是哪个账号」）；
+  // 真实后端按 token 认人，这个字段忽略掉即可。
+  const openid = (store.user && store.user.openid) || savedOpenid()
+  return post<BindResp>('/user/bind-phone', { phone, code, openid }).then((d) => {
+    applyBind(d)
+    return d
+  })
+}
+
+/**
+ * 「我的」里绑定微信：把当前账号和微信身份挂在一起，之后用微信登录直接进这个账号。
+ * real 模式只能从微信内置浏览器发起（网页授权的硬前提），微信外直接说明原因，
+ * 而不是放一个点了必然失败的按钮。
+ */
+export async function beginBindWechat(): Promise<void> {
+  if (!isLoggedIn()) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    return
+  }
+  if (store.user && store.user.openid) {
+    uni.showToast({ title: '当前账号已绑定微信', icon: 'none' })
+    return
+  }
+  // mock 模式：没有真实授权页可跳，直接让 Mock 后端把本会话的模拟微信身份挂上去
+  if (loginMode() === 'mock') {
+    if (!(await askWxAuth('bind'))) return
+    uni.showLoading({ title: '绑定中…', mask: true })
+    post<BindResp>('/user/bind-wechat', {
+      code: 'mock',
+      mockOpenid: mockOpenid(),
+      // Mock 按手机号定位「当前登录的账号」（它没有服务端会话）
+      phone: (store.user && store.user.phone) || savedPhone(),
+    })
+      .then((d) => {
+        uni.hideLoading()
+        applyBind(d)
+      })
+      .catch((e: { msg?: string }) => {
+        uni.hideLoading()
+        uni.showToast({ title: (e && e.msg) || '绑定失败，请重试', icon: 'none' })
+      })
+    return
+  }
+  if (!wx.isWeixin()) {
+    uni.showToast({ title: '绑定微信需要在微信中打开', icon: 'none', duration: 2200 })
+    return
+  }
+
+  if (!(await askWxAuth('bind'))) return
+  const back = wx.currentRoute() || '/pages/user/index'
+  const state = stashAuth(back, 'bind')
+  const url = wx.buildAuthorizeUrl({
+    appId: WX_APP_ID,
+    redirectUri: buildRedirectUri('bind', back),
+    scope: WX_SCOPE,
+    state,
+  })
+  uni.showLoading({ title: '正在打开微信授权…', mask: true })
+  if (wx.isH5()) window.location.replace(url)
+}
+
 export function jumpAfterLogin(redirect?: string): void {
   const url = redirect || '/pages/index/index'
   uni.reLaunch({
@@ -385,12 +471,17 @@ export function resumeFromCallback(): void {
   const s = ss()
   const expected = (s && s.getItem(KEY_STATE)) || ''
   // 地址栏参数优先：微信是一次跨域往返，回来时页面可能被重建，sessionStorage 未必还在
-  const urlIntent = cb.intent === 'profile' ? 'profile' : cb.intent === 'login' ? 'login' : ''
+  const urlIntent =
+    cb.intent === 'profile' || cb.intent === 'bind'
+      ? cb.intent
+      : cb.intent === 'login'
+        ? 'login'
+        : ''
   const intent = (urlIntent || (s && s.getItem(KEY_INTENT)) || 'login') as AuthIntent
   const redirect =
     cb.back ||
     (s && s.getItem(KEY_REDIRECT)) ||
-    (intent === 'profile' ? '/pages/user/index' : '/pages/index/index')
+    (intent === 'profile' || intent === 'bind' ? '/pages/user/index' : '/pages/index/index')
   // 先清地址栏再发请求：无论成功失败，code 都不能留在 URL 里被二次使用
   wx.stripCallback()
   clearAuthStash()
@@ -419,6 +510,21 @@ export function resumeFromCallback(): void {
       .catch((e: { msg?: string }) => {
         hideBootSplash()
         uni.showToast({ title: (e && e.msg) || '获取微信资料失败，请重试', icon: 'none' })
+      })
+    return
+  }
+
+  // ③ 绑定微信回跳：把 openid 挂到当前账号上，token 不动（他本来就是登录着的）
+  if (intent === 'bind') {
+    postSilent<BindResp>('/user/bind-wechat', { code: cb.code })
+      .then((d) => {
+        applyBind(d)
+        jumpAfterLogin(redirect)
+        setTimeout(hideBootSplash, 160)
+      })
+      .catch((e: { msg?: string }) => {
+        hideBootSplash()
+        uni.showToast({ title: (e && e.msg) || '绑定微信失败，请重试', icon: 'none' })
       })
     return
   }

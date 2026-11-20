@@ -547,6 +547,88 @@ route('POST', '/auth/sms/login', ({ body }) => {
   )
 })
 
+// ---- 身份绑定：给当前账号补上另一种登录方式（与 wx-server.js 同口径）----
+/** 昵称是系统占位名时，允许被对方的真实昵称覆盖 */
+function isPlaceholderName(n: string): boolean {
+  return !n || /^微信用户_/.test(n) || /^用户\d{4}$/.test(n)
+}
+
+/**
+ * 两个账号其实是同一个人 → 并成一个：保留先存在的旧账号（有历史），
+ * 把当前账号的身份位与资料搬过去，删掉当前空壳。
+ * 依据是验证码 / 微信授权都是他本人刚完成的，否则他拿不到这个身份。
+ */
+function mergeAccounts(target: Json, source: Json): Json {
+  if (target === source) return target
+  for (const f of ['openid', 'phone']) {
+    if (!target[f] && source[f]) target[f] = source[f]
+  }
+  if (!target.avatar && source.avatar) {
+    target.avatar = source.avatar
+    target.profileReady = true
+  }
+  if (isPlaceholderName(String(target.nickname)) && !isPlaceholderName(String(source.nickname))) {
+    target.nickname = source.nickname
+  }
+  db.users = db.users.filter((u) => u && u.id !== source.id)
+  return target
+}
+
+route('POST', '/user/bind-phone', ({ body }) => {
+  const phone = String(body.phone || '')
+  const code = String(body.code || '')
+  if (!PHONE_RE.test(phone)) fail('请输入正确的手机号', 40002)
+  if (!code) fail('请输入验证码', 40003)
+  if (smsCodes.get(phone) !== code) fail('验证码不正确或已过期', 40004)
+  smsCodes.delete(phone)
+
+  // 当前登录的是哪个账号：Mock 没有服务端会话，按前端带来的身份定位
+  const cur = byOpenid(String(body.openid || ''))
+  if (!cur) fail('登录已失效，请重新登录', 40100)
+  if (cur.phone === phone)
+    return ok({ user: publicUser(cur), merged: false }, '该手机号已绑定在当前账号')
+  if (cur.phone) fail('当前账号已绑定其他手机号', 40005)
+
+  let u = cur
+  let merged = false
+  const owner = byPhone(phone)
+  if (owner && owner.id !== cur.id) {
+    u = mergeAccounts(owner, cur)
+    merged = true
+  } else {
+    u.phone = phone
+  }
+  saveUsers()
+  db.user = u
+  return ok(
+    { user: publicUser(u), merged },
+    merged ? '该手机号已有账号，已合并到它' : '已绑定手机号',
+  )
+})
+
+route('POST', '/user/bind-wechat', ({ body }) => {
+  const openid = String(body.mockOpenid || '')
+  const cur = byPhone(String(body.phone || ''))
+  if (!cur) fail('登录已失效，请重新登录', 40100)
+  if (!openid) fail('缺少微信授权 code（请重新发起授权）', 40001)
+  if (cur.openid === openid)
+    return ok({ user: publicUser(cur), merged: false }, '该微信已绑定在当前账号')
+  if (cur.openid) fail('当前账号已绑定其他微信', 40006)
+
+  let u = cur
+  let merged = false
+  const owner = byOpenid(openid)
+  if (owner && owner.id !== cur.id) {
+    u = mergeAccounts(owner, cur)
+    merged = true
+  } else {
+    u.openid = openid
+  }
+  saveUsers()
+  db.user = u
+  return ok({ user: publicUser(u), merged }, merged ? '该微信已有账号，已合并到它' : '已绑定微信')
+})
+
 // ---- 订单 ----
 
 /**

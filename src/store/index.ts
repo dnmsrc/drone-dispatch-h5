@@ -20,6 +20,8 @@ export interface MockUser {
   nickname: string
   avatar?: string
   phone?: string
+  /** 微信身份位（openid）：与 phone 是同一行账号上的两个可绑定身份，不是两条账号 */
+  openid?: string
   /** 微信昵称头像是否已由用户主动授权获取（登录只拿 openid，资料是后补的） */
   profileReady?: boolean
   /** 微信只回了脱敏资料（「微信用户」+ 默认灰头像）：此后不再重复走授权，直接手动设置 */

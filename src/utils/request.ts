@@ -52,7 +52,7 @@ function hideToastSafely(): void {
  * 微信网页授权拿到的 code 只能在后端用 AppSecret 换 openid（浏览器里做会泄露密钥，且微信接口不允许跨域）。
  * 其余业务接口仍走内存 mock —— 静态页阶段不需要整站后端，只有「认人」这两步必须真。
  */
-const REAL_WX_APIS = ['/auth/wechat-login', '/auth/sms/', '/user/wechat-profile']
+const REAL_WX_APIS = ['/auth/wechat-login', '/auth/sms/', '/user/wechat-profile', '/user/bind-']
 
 function needRealBackend(url: string): boolean {
   return WX_AUTH_MODE === 'real' && REAL_WX_APIS.some((p) => url.startsWith(p))

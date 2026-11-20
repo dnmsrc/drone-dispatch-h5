@@ -12,7 +12,7 @@
           <DroneLogo :size="72" color="#4A6CF7" rotor-color="#94ACFF" />
         </view>
         <view class="wx-head-txt">
-          <text class="wx-title">{{ isProfile ? '获取微信资料' : '授权登录' }}</text>
+          <text class="wx-title">{{ title }}</text>
           <text class="wx-sub">{{ appName }}</text>
         </view>
       </view>
@@ -20,7 +20,7 @@
       <text class="wx-desc">{{ desc }}</text>
 
       <button class="wx-btn primary" @click="allow">
-        {{ isProfile ? '允许获取' : '允许登录' }}
+        {{ btnText }}
       </button>
       <button class="wx-btn ghost" @click="deny">取消</button>
     </view>
@@ -35,13 +35,23 @@ import { store } from '@/store'
 import { wxSheet, settleWxAuth, registerWxSheet } from '@/services/wxAuthSheet'
 
 const isProfile = computed(() => wxSheet.intent === 'profile')
+const isBind = computed(() => wxSheet.intent === 'bind')
 const appName = computed(() => store.profile?.brand?.appName || '星穹 SkyShow')
+
+const title = computed(() =>
+  isProfile.value ? '获取微信资料' : isBind.value ? '绑定微信' : '授权登录',
+)
+const btnText = computed(() =>
+  isProfile.value ? '允许获取' : isBind.value ? '允许绑定' : '允许登录',
+)
 
 // 一句话说清这次点「允许」会发生什么，不做权限罗列
 const desc = computed(() =>
   isProfile.value
     ? '微信会跳转一次确认页，把返回的资料填到「我的」里。'
-    : '将识别你的微信账号用于登录，不会读取聊天、好友等其他信息。',
+    : isBind.value
+      ? '将把你的微信绑定到当前账号，之后用微信登录也会进入这个账号。'
+      : '将识别你的微信账号用于登录，不会读取聊天、好友等其他信息。',
 )
 
 // 在服务层登记一次挂载：没有页面挂载时它会退化成系统弹窗，不会让确认卡丢失

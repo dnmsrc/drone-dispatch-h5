@@ -9,8 +9,8 @@
 // 弹窗状态必须是模块级的单例，页面只负责把组件挂到模板上。
 import { reactive } from 'vue'
 
-/** 这次授权是为了：登录换 token，还是在「我的」里补昵称头像 */
-export type WxAuthIntent = 'login' | 'profile'
+/** 这次授权是为了：登录换 token、「我的」里补昵称头像、还是给当前账号补绑微信 */
+export type WxAuthIntent = 'login' | 'profile' | 'bind'
 
 /** 弹窗可见性（页面模板直接读它渲染 WxAuthSheet） */
 export const wxSheet = reactive<{ visible: boolean; intent: WxAuthIntent }>({
@@ -34,7 +34,9 @@ function fallbackAsk(intent: WxAuthIntent): Promise<boolean> {
   const content =
     intent === 'profile'
       ? '确定获取你的微信昵称和头像吗？只用于「我的」页面展示。'
-      : '将使用你的微信身份登录，仅获取账号标识（openid），不读取昵称头像。'
+      : intent === 'bind'
+        ? '将把你的微信身份绑定到当前账号，之后用微信登录也会进入这个账号。'
+        : '将使用你的微信身份登录，仅获取账号标识（openid），不读取昵称头像。'
   return new Promise<boolean>((resolve) => {
     uni.showModal({
       title: '微信授权',
