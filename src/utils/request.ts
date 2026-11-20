@@ -7,6 +7,7 @@
 // services/auth.ts（登录页在微信内会自动承接）。登录页已在栈顶时不再重复跳转，防止死循环。
 import { mockRequest } from '@/mock/router'
 import { store } from '@/store'
+import { API_BASE, WX_AUTH_MODE } from '@/config/env'
 
 export interface ApiError {
   code?: number
@@ -46,6 +47,42 @@ function hideToastSafely(): void {
   }
 }
 
+/**
+ * 真实模式（VITE_WX_AUTH_MODE=real）下必须由后端完成的接口：
+ * 微信网页授权拿到的 code 只能在后端用 AppSecret 换 openid（浏览器里做会泄露密钥，且微信接口不允许跨域）。
+ * 其余业务接口仍走内存 mock —— 静态页阶段不需要整站后端，只有「认人」这两步必须真。
+ */
+const REAL_WX_APIS = ['/auth/wechat-login', '/user/wechat-profile']
+
+function needRealBackend(url: string): boolean {
+  return WX_AUTH_MODE === 'real' && REAL_WX_APIS.some((p) => url.startsWith(p))
+}
+
+/** 与 mockRequest 同形状（{ code, msg, data }）的真实 HTTP 通道，经 vite 的 /api 代理打到后端 */
+async function httpRequest(
+  method: string,
+  url: string,
+  data: Record<string, any>,
+): Promise<{ code: number; msg?: string; data?: any }> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (store.token) headers.Authorization = 'Bearer ' + store.token
+  const resp = await fetch(API_BASE + url, {
+    method,
+    headers,
+    body: method === 'GET' ? undefined : JSON.stringify(data),
+  })
+  let body: any = null
+  try {
+    body = await resp.json()
+  } catch {
+    /* 后端返回非 JSON（网关错误页等）时统一兜底 */
+  }
+  if (!resp.ok && !body) {
+    throw { code: resp.status, msg: 'HTTP ' + resp.status } as ApiError
+  }
+  return body
+}
+
 export function api<T = any>(
   method: string,
   url: string,
@@ -54,7 +91,11 @@ export function api<T = any>(
 ): Promise<T> {
   const silent = opts.silent === true
 
-  return mockRequest(method, url, data).then(
+  const task = needRealBackend(url)
+    ? httpRequest(method, url, data)
+    : mockRequest(method, url, data)
+
+  return task.then(
     (res) => {
       if (res.code === 0) return res.data as T
       if (res.code === 40100) {
