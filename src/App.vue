@@ -3,9 +3,12 @@ import type { ProfileConfig } from '@/mock/types'
 import { store } from '@/store'
 import { getProfile } from '@/services/config'
 import { initAuth } from '@/services/auth'
+import { initBoot } from '@/utils/boot'
 
 export default {
   onLaunch() {
+    // 先接启动骨架：HTML 里那层 loading 得有人负责撤，回跳中则要等到换完 token（见 utils/boot.ts）
+    initBoot()
     // 登录态恢复 + 微信授权回跳（?code=&state=）统一在 auth 服务里处理：
     // 从微信授权页回来时，onLaunch 早于页面渲染，正好在这里用 code 换 token 再回跳目标页
     initAuth()

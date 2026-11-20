@@ -29,9 +29,130 @@
         box-shadow: 0 0 40px rgba(74, 108, 247, 0.25);
         position: relative;
       }
+
+      /* 启动骨架（见 body 里的 #boot）：JS 还没下载执行完时给一屏确定的内容。
+         微信里这段等待尤其明显 —— 授权回跳是一次整页重载，SPA 要重新下全部模块，
+         没有骨架的话用户面对的就是一片空白，会以为页面卡死或者没加载出来。 */
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        background:
+          radial-gradient(1200px 640px at 50% -10%, #1b2450 0%, #0b1026 62%) fixed,
+          #0b1026;
+        transition: opacity 0.26s ease;
+      }
+      #boot.out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .boot-logo {
+        width: 92px;
+        height: 92px;
+        animation: boot-float 2.6s ease-in-out infinite;
+      }
+      .boot-bar {
+        width: 116px;
+        height: 3px;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.12);
+        overflow: hidden;
+      }
+      .boot-bar i {
+        display: block;
+        width: 44%;
+        height: 100%;
+        border-radius: 2px;
+        background: linear-gradient(90deg, #4a6cf7, #3de0c0);
+        animation: boot-slide 1.15s ease-in-out infinite;
+      }
+      .boot-text {
+        margin: 0;
+        font:
+          13px/1.5 -apple-system,
+          BlinkMacSystemFont,
+          'PingFang SC',
+          sans-serif;
+        color: #8f9bc4;
+        letter-spacing: 0.14em;
+      }
+      @keyframes boot-float {
+        0%,
+        100% {
+          transform: translateY(-6px);
+        }
+        50% {
+          transform: translateY(6px);
+        }
+      }
+      @keyframes boot-slide {
+        0% {
+          transform: translateX(-110%);
+        }
+        100% {
+          transform: translateX(320%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-logo,
+        .boot-bar i {
+          animation: none;
+        }
+      }
     </style>
+    <script>
+      // 微信网页授权回跳时地址栏形如 ?code=..&state=..&intent=..&back=..
+      // 两个动作必须赶在 SPA 路由初始化之前做（所以用普通 script，先于 main.ts 执行）：
+      // 1) 把 hash 直接对到 back，否则应用先渲染首页、再 reLaunch 到目标页，中间明显闪一下；
+      // 2) 打个 wx-pending 标记，让启动骨架先别撤 —— 换 token 期间页面还是未登录态，
+      //    骨架一撤就会露出半成品。auth 服务换完 token 再撤（见 src/utils/boot.ts）。
+      ;(function () {
+        try {
+          var q = new URLSearchParams(window.location.search)
+          var code = q.get('code')
+          var back = q.get('back')
+          if (code) document.documentElement.classList.add('wx-pending')
+          if (code && back && !window.location.hash && /^\/pages\//.test(back)) {
+            history.replaceState(
+              null,
+              '',
+              window.location.pathname + window.location.search + '#' + back,
+            )
+          }
+        } catch (e) {
+          /* 老内核不支持 URLSearchParams 时忽略，退回原来的「先首页再跳」行为 */
+        }
+      })()
+      // 兜底：脚本加载失败或后面某步抛错时，别让人永远停在这屏转圈
+      setTimeout(function () {
+        var b = document.getElementById('boot')
+        if (b && !b.classList.contains('out')) b.classList.add('out')
+      }, 15000)
+    </script>
   </head>
   <body>
+    <div id="boot" role="status" aria-live="polite">
+      <svg class="boot-logo" viewBox="0 0 64 64" aria-hidden="true">
+        <path
+          d="M16 20L32 32M48 20L32 32M16 44L32 32M48 44L32 32"
+          stroke="#4A6CF7"
+          stroke-width="3"
+          fill="none"
+        />
+        <circle cx="32" cy="32" r="9" fill="#4A6CF7" />
+        <circle cx="16" cy="20" r="5" fill="#8FA6FF" />
+        <circle cx="48" cy="20" r="5" fill="#8FA6FF" />
+        <circle cx="16" cy="44" r="5" fill="#8FA6FF" />
+        <circle cx="48" cy="44" r="5" fill="#8FA6FF" />
+      </svg>
+      <div class="boot-bar"><i></i></div>
+      <p class="boot-text">正在进入…</p>
+    </div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

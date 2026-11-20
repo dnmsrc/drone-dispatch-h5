@@ -20,6 +20,7 @@ import { post, postSilent } from '@/utils/request'
 import { store, setLogin, patchUser, isLoggedIn, logout as clearSession } from '@/store'
 import { WX_APP_ID, WX_AUTH_MODE, WX_SCOPE, WX_REDIRECT_URI } from '@/config/env'
 import { askWxAuth } from '@/services/wxAuthSheet'
+import { hideBootSplash } from '@/utils/boot'
 import * as wx from '@/utils/wechat'
 
 export interface WxUserInfo {
@@ -330,9 +331,16 @@ export function jumpAfterLogin(redirect?: string): void {
  * App.onLaunch 调用一次即可；没有 code 时是空操作。
  */
 export function resumeFromCallback(): void {
-  if (loginMode() !== 'real' || !wx.isH5()) return
+  if (!wx.isH5()) return
   const cb = wx.readCallback()
   if (!cb) return
+  // 地址栏有 code 但当前不是 real 模式（比如本机切回了 mock）：这个 code 永远换不了，
+  // 不能把它当「回调处理中」把启动骨架一直挂着，清掉参数并立刻撤骨架
+  if (loginMode() !== 'real') {
+    wx.stripCallback()
+    hideBootSplash()
+    return
+  }
 
   const s = ss()
   const expected = (s && s.getItem(KEY_STATE)) || ''
@@ -352,6 +360,8 @@ export function resumeFromCallback(): void {
   // 此时仍有一次性的 code + 后端校验兜底，比让用户卡在这儿重试强。
   if (expected && cb.state !== expected) {
     console.warn('[auth] state 不匹配，拒绝换取：', cb.state, '≠', expected)
+    // 骨架屏是为「换 token 中」准备的，这条路径已经决定了不换，得立刻撤，否则用户对着转圈干等
+    hideBootSplash()
     uni.showToast({ title: '授权校验失败，请重试', icon: 'none' })
     return
   }
@@ -361,9 +371,13 @@ export function resumeFromCallback(): void {
     postSilent<WechatProfile>('/user/wechat-profile', { code: cb.code })
       .then((d) => {
         applyProfile(d)
-        setTimeout(() => jumpAfterLogin(redirect), 400)
+        // 先跳回原页（新页会按「资料已就绪」渲染），稍后再撤骨架 —— 顺序反过来的话
+        // 骨架淡出的那零点几秒里露出的是资料还没填上的旧页面，等于白闪一下
+        jumpAfterLogin(redirect)
+        setTimeout(hideBootSplash, 160)
       })
       .catch((e: { msg?: string }) => {
+        hideBootSplash()
         uni.showToast({ title: (e && e.msg) || '获取微信资料失败，请重试', icon: 'none' })
       })
     return
@@ -374,9 +388,11 @@ export function resumeFromCallback(): void {
     .then((d) => {
       setLogin(d.token, d.user)
       uni.showToast({ title: '登录成功', icon: 'success' })
-      setTimeout(() => jumpAfterLogin(redirect), 400)
+      jumpAfterLogin(redirect)
+      setTimeout(hideBootSplash, 160)
     })
     .catch((e: { msg?: string }) => {
+      hideBootSplash()
       uni.showToast({ title: (e && e.msg) || '微信登录失败，请重试', icon: 'none' })
     })
 }
