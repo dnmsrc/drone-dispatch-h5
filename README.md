@@ -19,19 +19,22 @@
 
 入口只有一个：**扫码打开 H5，落在首页**。扫码第一屏不做任何登录，匿名可浏览全部内容；只有点到「立即预约」「我的」「订单」这类需要身份的动作时才登录，且按环境自动选通道：
 
-- **微信内**：`snsapi_base` **静默授权**（不弹授权页、不问昵称头像），跳一圈回来就登录好并回到刚才那页；
+- **微信内**：先弹**我们自己写的授权确认卡**（应用名 / 这次拿什么 / 不拿什么 / 拒绝 · 允许），
+  点「允许」才走 `snsapi_base` **静默授权**（微信侧不弹授权页、不问昵称头像），跳一圈回来就登录好并回到刚才那页；
+  点「拒绝」则什么都不发生，留在原页。
 - **微信外**（网页授权在浏览器里发起不了）：直接进**手机号 + 验证码**登录页。
 
-**登录 ≠ 拿资料**：登录只换 openid。昵称头像由用户自己在「我的 → 微信资料」里点一下，
-走 `snsapi_userinfo`（这一档才会真弹「是否允许获取昵称头像」），拿到后 `patchUser` 回填、不动 token。
+**登录 ≠ 拿资料**：登录只换 openid。昵称头像由用户自己在「我的 → 微信资料」里点一下，先过同一张确认卡，
+再走 `snsapi_userinfo`（这一档微信才会真弹「是否允许获取昵称头像」），拿到后 `patchUser` 回填、不动 token。
 
 - 编排集中在 `src/services/auth.ts`（`beginLogin` / `requireLogin` / `beginProfileAuth` / `resumeFromCallback` / `logout`，手机号通道 `sendSmsCode` / `loginWithSms`），页面不自己拼跳转；微信环境判断与授权 URL 在 `src/utils/wechat.ts`。
+- 确认卡在 `src/components/WxAuthSheet.vue`，状态在 `src/services/wxAuthSheet.ts`（`askWxAuth` 返回 Promise）；能触发登录的页面模板里都要放一行 `<WxAuthSheet />`，漏了会退化成系统弹窗兜底。
 - 一次授权往返只干一件事：回跳按 `wx_oauth_intent` 分派（`login` 换 token / `profile` 只回填资料）。
-- 两种模式（`VITE_WX_AUTH_MODE`）：`mock`＝本地模拟（微信内模拟静默登录，无需公众号资质；开发/演示/自动化默认）；`real`＝真实跳转微信授权（需 AppID + 公众平台「网页授权域名」，未配 AppID 自动降级 mock）。
-- 页面加载兜底会先弹确认再跳授权：微信会把「无用户交互的自动跳转」固化成快照页（只显示「点击访问完整网页」），所以深链进受保护页时不能直接跳。
+- 两种模式（`VITE_WX_AUTH_MODE`）：`mock`＝本地模拟（微信内同样先弹确认卡再模拟静默登录，无需公众号资质；开发/演示/自动化默认）；`real`＝真实跳转微信授权（需 AppID + 公众平台「网页授权域名」，未配 AppID 自动降级 mock）。
+- 确认卡点「允许」才跳授权，天然满足微信「必须有用户交互才能跳授权」的规则：不点不会被固化成快照页（只显示「点击访问完整网页」）。
 - 手机号验证码：60s 重发倒计时；Mock 环境验证码固定 `123456`（发码后由接口返回的 `demoCode` 决定是否提示）。
 - 真实环境的资质、后端接口契约（`/auth/wechat-login`、`/user/wechat-profile`、短信两条）、部署与排错清单见 [docs/微信登录接入说明.md](docs/微信登录接入说明.md)。
-- 自动化：`node ../.shots-tmp/h5-login-e2e.mjs`（mock 全流程含静默登录与资料授权，26 断言）、`node ../.shots-tmp/h5-login-real-e2e.mjs`（real 协议链路，21 断言）。
+- 自动化：`node ../.shots-tmp/h5-login-e2e.mjs`（mock 全流程含确认卡、静默登录与资料授权，33 断言）、`node ../.shots-tmp/h5-login-real-e2e.mjs`（real 协议链路，21 断言）。
 
 ## 技术栈
 
