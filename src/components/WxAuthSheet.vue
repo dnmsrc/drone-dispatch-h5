@@ -1,41 +1,28 @@
 <template>
-  <!-- 自定义「微信授权确认」卡：微信的 snsapi_base 授权本身是静默的（跳一下中转页就回来），
-       用户点完预约会觉得"怎么什么都没发生"。所以在真正跳转前先用这张卡把「将做什么」讲清楚，
-       用户点「允许」才发起授权；点「拒绝」/点遮罩就什么都不做，留在原页面。 -->
+  <!-- 授权确认（底部弹出）：微信的 snsapi_base 授权本身是静默的（跳一下中转页就回来），
+       用户点完预约会觉得"怎么什么都没发生"。所以在真正跳转前用这张底部卡只讲一件事
+       「要用你的微信身份登录」，点「允许」才发起授权，点「取消」/点遮罩留在原页面。
+       刻意不放权限清单：登录只拿一个账号标识，列一堆「不获取什么」反而增加阅读负担。 -->
   <view v-if="wxSheet.visible" class="wx-mask" @click="deny">
-    <view class="wx-card" @click.stop>
-      <view class="wx-app">
+    <view class="wx-sheet" @click.stop>
+      <view class="wx-bar"></view>
+
+      <view class="wx-head">
         <view class="wx-ico">
-          <DroneLogo :size="96" color="#4A6CF7" rotor-color="#94ACFF" />
+          <DroneLogo :size="72" color="#4A6CF7" rotor-color="#94ACFF" />
         </view>
-        <text class="wx-name">{{ appName }}</text>
-        <text class="wx-slogan">{{ slogan }}</text>
+        <view class="wx-head-txt">
+          <text class="wx-title">{{ isProfile ? '获取微信资料' : '授权登录' }}</text>
+          <text class="wx-sub">{{ appName }}</text>
+        </view>
       </view>
 
-      <text class="wx-title">{{
-        isProfile ? '申请获取你的微信资料' : '申请使用你的微信身份'
-      }}</text>
       <text class="wx-desc">{{ desc }}</text>
 
-      <view class="wx-list">
-        <view v-for="it in items" :key="it.k" class="wx-row">
-          <view class="wx-mark" :class="{ off: !it.on }">
-            <view v-if="it.on" class="gck"></view>
-            <view v-else class="wx-dash"></view>
-          </view>
-          <view class="wx-txt">
-            <text class="wx-k">{{ it.k }}</text>
-            <text class="wx-v">{{ it.v }}</text>
-          </view>
-        </view>
-      </view>
-
-      <text class="wx-hint">{{ hint }}</text>
-
-      <view class="wx-btns">
-        <button class="wx-btn ghost" @click="deny">拒绝</button>
-        <button class="wx-btn primary" @click="allow">允许</button>
-      </view>
+      <button class="wx-btn primary" @click="allow">
+        {{ isProfile ? '允许获取' : '允许登录' }}
+      </button>
+      <button class="wx-btn ghost" @click="deny">取消</button>
     </view>
   </view>
 </template>
@@ -49,31 +36,12 @@ import { wxSheet, settleWxAuth, registerWxSheet } from '@/services/wxAuthSheet'
 
 const isProfile = computed(() => wxSheet.intent === 'profile')
 const appName = computed(() => store.profile?.brand?.appName || '星穹 SkyShow')
-const slogan = computed(() => store.profile?.brand?.slogan || '无人机编队灯光表演一站式预约平台')
 
-// 一次只申请一件事，逐条列清楚「会拿什么 / 不会拿什么」——用户看得懂才谈得上同意
-const items = computed(() =>
-  isProfile.value
-    ? [
-        { on: true, k: '头像、昵称', v: '展示在「我的」页面' },
-        { on: false, k: '手机号、好友关系', v: '不获取' },
-      ]
-    : [
-        { on: true, k: '账号标识（openid）', v: '用于识别你的账号、保持登录' },
-        { on: false, k: '昵称、头像', v: '不获取，可在「我的」里单独授权' },
-      ],
-)
-
+// 一句话说清这次点「允许」会发生什么，不做权限罗列
 const desc = computed(() =>
   isProfile.value
-    ? '用于在「我的」里显示你的头像和昵称，不会用于其他用途。'
-    : '用于登录。只会拿到你在本公众号下的账号标识，用来认出你，不读取其他微信信息。',
-)
-
-const hint = computed(() =>
-  isProfile.value
-    ? '点「允许」后会短暂跳转微信授权页，随即回到「我的」。'
-    : '点「允许」后会短暂跳转微信并立即返回，无需在微信里再次点同意。',
+    ? '微信会跳转一次确认页，把返回的资料填到「我的」里。'
+    : '将识别你的微信账号用于登录，不会读取聊天、好友等其他信息。',
 )
 
 // 在服务层登记一次挂载：没有页面挂载时它会退化成系统弹窗，不会让确认卡丢失
@@ -90,154 +58,111 @@ function deny() {
 </script>
 
 <style scoped>
+/* 底部弹出：遮罩淡入 + 面板上滑。用 keyframes 而不是 <transition>，小程序端也能跑 */
 .wx-mask {
   position: fixed;
   inset: 0;
   z-index: 300;
-  background: rgba(12, 16, 34, 0.55);
+  background: rgba(12, 16, 34, 0.5);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  padding: 40rpx;
-  box-sizing: border-box;
+  animation: wxFade 0.2s ease both;
 }
-.wx-card {
+.wx-sheet {
   width: 100%;
-  max-width: 600rpx;
+  max-width: 640px;
   background: #fff;
-  border-radius: 32rpx;
-  padding: 44rpx 36rpx 32rpx;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 16rpx 40rpx calc(28rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
-  box-shadow: 0 24rpx 80rpx rgba(8, 12, 32, 0.35);
+  animation: wxSlideUp 0.26s cubic-bezier(0.22, 0.8, 0.28, 1) both;
 }
-.wx-app {
+@keyframes wxFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes wxSlideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+/* 顶部拖拽指示条：让用户一眼明白这是从底部升起的浮层 */
+.wx-bar {
+  width: 72rpx;
+  height: 8rpx;
+  border-radius: 999rpx;
+  background: var(--bg-2);
+  margin: 0 auto 28rpx;
+}
+.wx-head {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  margin-bottom: 28rpx;
+  gap: 20rpx;
+  margin-bottom: 20rpx;
 }
 .wx-ico {
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 28rpx;
+  flex: none;
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 24rpx;
   background: linear-gradient(180deg, #f2f5ff, #e6ecff);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16rpx;
 }
-.wx-name {
-  font-size: var(--fs-6);
-  font-weight: var(--fw-bold);
-  color: var(--text-1);
-}
-.wx-slogan {
-  font-size: var(--fs-2);
-  color: var(--text-3);
-  margin-top: 6rpx;
+.wx-head-txt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
 }
 .wx-title {
-  display: block;
-  font-size: var(--fs-5);
-  font-weight: var(--fw-bold);
+  font-size: var(--fs-7);
+  font-weight: var(--fw-heavy);
   color: var(--text-1);
-  text-align: center;
-  margin-bottom: 10rpx;
+}
+.wx-sub {
+  font-size: var(--fs-2);
+  color: var(--text-3);
 }
 .wx-desc {
   display: block;
   font-size: var(--fs-3);
   color: var(--text-2);
   line-height: 1.7;
-  text-align: center;
-  margin-bottom: 24rpx;
-}
-.wx-list {
-  background: var(--bg-2);
-  border-radius: 20rpx;
-  padding: 8rpx 24rpx;
-  margin-bottom: 20rpx;
-}
-.wx-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 16rpx;
-  padding: 18rpx 0;
-}
-.wx-row + .wx-row {
-  border-top: 2rpx solid var(--line);
-}
-.wx-mark {
-  flex: none;
-  width: 34rpx;
-  height: 34rpx;
-  border-radius: 50%;
-  background: rgba(43, 164, 113, 0.12);
-  color: var(--success);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 4rpx;
-}
-.wx-mark.off {
-  background: rgba(99, 107, 124, 0.1);
-  color: var(--text-4);
-}
-/* 不获取的项用短横线，和「已获取」的勾形成明确对比；不用 ✕ 字符（部分字体缺字） */
-.wx-dash {
-  width: 16rpx;
-  height: 4rpx;
-  border-radius: 2rpx;
-  background: currentColor;
-}
-.wx-txt {
-  flex: 1;
-  min-width: 0;
-}
-.wx-k {
-  display: block;
-  font-size: var(--fs-4);
-  color: var(--text-1);
-  font-weight: var(--fw-medium);
-}
-.wx-v {
-  display: block;
-  font-size: var(--fs-2);
-  color: var(--text-3);
-  margin-top: 4rpx;
-}
-.wx-hint {
-  display: block;
-  font-size: var(--fs-2);
-  color: var(--text-3);
-  line-height: 1.6;
-  text-align: center;
-  margin-bottom: 24rpx;
-}
-.wx-btns {
-  display: flex;
-  gap: 20rpx;
+  margin-bottom: 32rpx;
 }
 .wx-btn {
-  flex: 1;
   border: none;
   border-radius: 999rpx;
   font-size: var(--fs-5);
   font-weight: var(--fw-semibold);
-  min-height: 88rpx;
+  min-height: 92rpx;
   padding: 0;
   box-sizing: border-box;
 }
 .wx-btn::after {
   border: none;
 }
-.wx-btn.ghost {
-  background: var(--bg-2);
-  color: var(--text-2);
-}
 .wx-btn.primary {
   background: linear-gradient(135deg, var(--primary), var(--primary-2));
   color: #fff;
   box-shadow: 0 10rpx 24rpx rgba(74, 108, 247, 0.3);
+}
+.wx-btn.ghost {
+  margin-top: 8rpx;
+  background: transparent;
+  color: var(--text-3);
+  font-weight: var(--fw-medium);
+  min-height: 76rpx;
 }
 </style>
