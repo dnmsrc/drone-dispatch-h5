@@ -36,6 +36,12 @@
 - 真实环境的资质、后端接口契约（`/auth/wechat-login`、`/user/wechat-profile`、短信两条）、部署与排错清单见 [docs/微信登录接入说明.md](docs/微信登录接入说明.md)。
 - 自动化：`node ../.shots-tmp/h5-login-e2e.mjs`（mock 全流程含确认卡、静默登录与资料授权，33 断言）、`node ../.shots-tmp/h5-login-real-e2e.mjs`（real 协议链路，21 断言）。
 
+**授权往返时的白屏，分两段、只有一段归我们管**：网页授权（登录和取资料都一样）是**整页跳转**，微信那一跳在 `open.weixin.qq.com` 上渲染，中间那一下空白由微信决定，前端改不了。真正能优化的是「回来之后」——SPA 要重新下载执行全部模块，这段时间 `#app` 是空的。现在做了三层：
+
+- `index.html` 里内联了一屏纯 HTML+CSS 骨架（`#boot`：夜空 + 悬浮 logo + 流光进度条 +「正在进入…」）。它不依赖任何框架，JS 还没执行就能画出来，所以用户看到的不再是白屏，而是「正在进入」。撤掉它由 `src/utils/boot.ts` 负责：正常启动等页面首帧画完再撤；**回跳途中要等换完 token 才撤**（那段时间页面还是未登录态，撤早了会露出半成品），并带 8 秒兜底，请求悬挂也不会把人永远留在转圈页；
+- 回跳地址里带的 `back` 参数会被一段内联脚本**提前写进 hash**，应用启动时直接落在目标页，省掉「先渲染首页、再 reLaunch 到目标页」那次多余的闪烁；
+- **真机验收要用生产构建**（`npm run build:h5` 后 `vite preview`），不要用 dev server：dev 模式下微信内要逐个模块现下载，首屏慢一个数量级，那才是白屏时间长的主因。
+
 ## 技术栈
 
 - uni-app（Vue 3 + `<script setup>` + TypeScript）+ Vite，一套代码同时产出 H5 与微信小程序（`mp-weixin`）
@@ -81,6 +87,8 @@ cd drone-dispatch-h5
 npm install
 npm run dev:h5          # H5 开发调试（默认 5174，见 .env 的 VITE_DEV_PORT）
 npm run build:h5        # 产物 dist/build/h5
+# 用生产产物做真机 / 微信验收（预览服务沿用 vite.config 里的 /api 代理，端口与 dev 一致）：
+npx vite preview --outDir dist/build/h5 --port 5174 --host
 npm run build:mp-weixin # 微信小程序产物 dist/build/mp-weixin，用微信开发者工具导入（AppID 自行配置）
 npm run type-check      # vue-tsc 类型检查
 npm run format          # prettier --write；只检查用 npm run format:check
